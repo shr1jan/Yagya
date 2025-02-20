@@ -1,0 +1,57 @@
+// filepath: /c:/Users/shr1j/yagya/android/settings.gradle
+
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+        maven { url("$rootDir/../node_modules/react-native/android") }
+    }
+    // This line pulls in the React Native Gradle plugin from node_modules
+    includeBuild("../node_modules/@react-native/gradle-plugin")
+}
+
+plugins {
+    // The new plugin that configures React Native settings
+    id("com.facebook.react.settings")
+}
+
+try {
+    // Autolink any native modules
+    extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+        ex.autolinkLibrariesFromCommand()
+    }
+} catch (Exception e) {
+    println("Error configuring ReactSettingsExtension: ${e.message}")
+}
+
+rootProject.name = "yagya2"
+
+include(":app")
+
+// Manually link react-native-safe-area-context
+include(":react-native-safe-area-context")
+project(":react-native-safe-area-context").projectDir = new File(
+    rootProject.projectDir,
+    "../node_modules/react-native-safe-area-context/android"
+)
+
+// Manually link react-native-screens
+include(":react-native-screens")
+project(":react-native-screens").projectDir = new File(
+    rootProject.projectDir,
+    "../node_modules/react-native-screens/android"
+)
+
+// Already included modules
+include(":react-native-reanimated")
+project(":react-native-reanimated").projectDir = new File(
+    rootProject.projectDir, 
+    "../node_modules/react-native-reanimated/android"
+)
+
+include(":react-native-gesture-handler")
+project(":react-native-gesture-handler").projectDir = new File(
+    rootProject.projectDir, 
+    "../node_modules/react-native-gesture-handler/android"
+)

@@ -1,0 +1,74 @@
+// filepath: android/app/build.gradle
+
+plugins {
+    // Android application plugin
+    id("com.android.application")
+
+    // React Native Gradle plugin (from settings.gradle -> includeBuild)
+    id("com.facebook.react")
+
+    // Kotlin for Android
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "com.yagya2"
+    compileSdkVersion rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        applicationId "com.yagya2"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
+
+react {
+    // The root directory of your React Native project (where package.json lives)
+    root = file("$rootDir/..")
+
+    // Where "react-native" is installed: C:\Users\shr1j\yagya\node_modules\react-native
+    reactNativeDir = file("$rootDir/../node_modules/react-native")
+
+    // Where "react-native-codegen" is installed, if you have it
+    codegenDir = file("$rootDir/../node_modules/react-native-codegen")
+
+    // Where the RN CLI file is located
+    cliFile = file("$rootDir/../node_modules/react-native/cli.js")
+}
+
+dependencies {
+    // Existing manually linked modules
+    implementation project(":react-native-reanimated")
+    implementation project(":react-native-gesture-handler")
+
+    // Manually link react-native-safe-area-context and react-native-screens
+    implementation project(":react-native-safe-area-context")
+    implementation project(":react-native-screens")
+
+    // Core React Native dependency
+    implementation("com.facebook.react:react-native:+")
+
+    // Other dependencies
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.0.0")
+}
