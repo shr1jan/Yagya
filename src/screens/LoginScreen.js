@@ -20,7 +20,15 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* Title at the Top */}
       <Text style={styles.title}>Start the YAGYA!</Text>
+      
+      {/* Logo Image */}
+      <Image
+        source={require('../../assets/icons/yagya.png')} // Correct path to logo
+        style={styles.logo}
+      />
+
       <Text style={styles.subtitle}>Login to Yagya.ai</Text>
 
       {/* Email Input with Icon */}
@@ -80,9 +88,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 10,
     fontFamily: 'PlusJakartaSans-Medium',
     color: '#000',
+    position: 'absolute',
+    top: 50,
+  },
+  logo: {
+    width: 150, // Adjust the size as needed
+    height: 150,
+    marginBottom: 20,
+    marginTop: 80,
   },
   subtitle: {
     fontSize: 16,
