@@ -36,8 +36,6 @@ export default function Footer({ navigation }) {
 const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#ccc',
     paddingVertical: 10,
     backgroundColor: '#EDE9F6',
   },
