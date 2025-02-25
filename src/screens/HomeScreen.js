@@ -14,7 +14,20 @@ import {
 
 export default function HomeScreen({ navigation }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(''); // State for search query
   const slideAnim = useRef(new Animated.Value(-300)).current; // Initial position off-screen
+
+  // Dummy chat history data
+  const chatHistory = [
+    { id: 1, name: 'John Doe', lastMessage: 'Hey, how are you?' },
+    { id: 2, name: 'Jane Smith', lastMessage: 'See you tomorrow!' },
+    { id: 3, name: 'Alice Johnson', lastMessage: 'Did you finish the report?' },
+  ];
+
+  // Filter chat history based on search query
+  const filteredChatHistory = chatHistory.filter((chat) =>
+    chat.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleMenuToggle = () => {
     const newState = !isMenuOpen;
@@ -42,8 +55,8 @@ export default function HomeScreen({ navigation }) {
         <Text style={styles.headerTitle}>
           Welcome to <Text style={styles.highlight}>Yagya.ai</Text>
         </Text>
-        <TouchableOpacity 
-          style={styles.headerIconRight} 
+        <TouchableOpacity
+          style={styles.headerIconRight}
           onPress={() => navigation.navigate('Nexus')}
         >
           <Image source={require('../../assets/icons/nexus.png')} style={styles.menuIcon} />
@@ -51,9 +64,7 @@ export default function HomeScreen({ navigation }) {
       </View>
 
       {/* OVERLAY (For Outside Tap) */}
-      {isMenuOpen && (
-        <Pressable style={styles.overlay} onPress={handleOutsideTap} />
-      )}
+      {isMenuOpen && <Pressable style={styles.overlay} onPress={handleOutsideTap} />}
 
       {/* SLIDING MENU */}
       <Animated.View
@@ -64,15 +75,28 @@ export default function HomeScreen({ navigation }) {
           },
         ]}
       >
-        <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Profile')}>
-          <Text style={styles.menuText}>Profile</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Settings')}>
-          <Text style={styles.menuText}>Settings</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Help')}>
-          <Text style={styles.menuText}>Help</Text>
-        </TouchableOpacity>
+        {/* SEARCH BAR */}
+        <TextInput
+          style={styles.searchBar}
+          placeholder="Search chats..."
+          placeholderTextColor="#999"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+
+        {/* CHAT HISTORY */}
+        <ScrollView style={styles.chatHistoryContainer}>
+          {filteredChatHistory.map((chat) => (
+            <TouchableOpacity
+              key={chat.id}
+              style={styles.chatItem}
+              onPress={() => navigation.navigate('Chat', { chatId: chat.id })}
+            >
+              <Text style={styles.chatName}>{chat.name}</Text>
+              <Text style={styles.chatLastMessage}>{chat.lastMessage}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </Animated.View>
 
       {/* MAIN CONTENT */}
@@ -101,19 +125,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#EDE9F6' },
   header: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: '#EDE9F6' },
   headerIconLeft: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  headerIconRight: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
+  headerIconRight: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   menuIcon: { width: 24, height: 24 },
   headerTitle: { flex: 1, fontSize: 20, fontWeight: 'bold', textAlign: 'center', color: '#000' },
   highlight: { color: '#9A66FF' },
-  contentContainer: { 
-    padding: 20,
-    flex: 1  // Added flex: 1 to maintain the spacing
-  },
+  contentContainer: { padding: 20, flex: 1 },
 
   // OVERLAY (For Outside Tap)
   overlay: {
@@ -122,8 +138,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)', // Semi-transparent black
-    zIndex: 999, // Below the menu but above other content
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 999,
   },
 
   // SLIDING MENU
@@ -131,25 +147,47 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    width: 300, // Width of the menu
+    width: 300,
     height: '100%',
     backgroundColor: '#FFF',
     padding: 20,
-    zIndex: 1000, // Ensure it's above the overlay
+    zIndex: 1000,
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
     elevation: 5,
   },
-  menuItem: {
+
+  // SEARCH BAR
+  searchBar: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 20,
+  },
+
+  // CHAT HISTORY
+  chatHistoryContainer: {
+    flex: 1,
+  },
+  chatItem: {
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#EEE',
   },
-  menuText: {
+  chatName: {
     fontSize: 16,
+    fontWeight: 'bold',
     color: '#333',
+  },
+  chatLastMessage: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
   },
 
   // BUTTON CONTAINER
@@ -160,10 +198,10 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     backgroundColor: '#EDE9F6',
     position: 'absolute',
-    bottom: 5, // Changed from 0 to 20 to move it up from the very bottom
+    bottom: 0,
     left: 0,
     right: 5,
-    marginBottom: 30, // Added margin to push it up further from the bottom
+    marginBottom: 0,
   },
   circleButton: {
     width: 50,
