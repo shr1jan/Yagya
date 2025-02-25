@@ -14,7 +14,6 @@ import Animated, {
   Extrapolate,
   useAnimatedScrollHandler,
 } from 'react-native-reanimated';
-import Footer from '../components/Footer'; // Import the Footer component
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.8;
@@ -152,9 +151,6 @@ export default function NexusScreen({ navigation }) {
           />
         </View>
       </View>
-
-      {/* Footer at the bottom */}
-      <Footer navigation={navigation} />
     </SafeAreaView>
   );
 }
@@ -165,7 +161,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EDE9F6',
   },
   contentContainer: {
-    flex: 1, // Takes up all available space above the footer
+    flex: 1, // This will now take up the full height since there's no footer
   },
   title: {
     fontSize: 24,

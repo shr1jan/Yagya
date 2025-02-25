@@ -26,28 +26,28 @@ export default function AppNavigator() {
         <Stack.Screen
           name="SignUp"
           component={SignUpScreen}
-          options={{ title: 'Sign Up' }}
+          options={{ headerShown: false }}
         />
 
         {/* FORGOT PASSWORD */}
         <Stack.Screen
           name="ForgotPassword"
           component={ForgotPasswordScreen}
-          options={{ title: 'Reset Password' }}
+          options={{ headerShown: false }}
         />
 
         {/* HOME */}
         <Stack.Screen
           name="Home"
           component={HomeScreen}
-          options={{ title: 'Yagya Home' }}
+          options={{ headerShown: false }}
         />
 
         {/* NEXUS */}
         <Stack.Screen
           name="Nexus"
           component={NexusScreen}
-          options={{ title: 'Nexus' }}
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

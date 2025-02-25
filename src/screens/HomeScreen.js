@@ -11,7 +11,6 @@ import {
   Pressable,
   TextInput,
 } from 'react-native';
-import Footer from '../components/Footer';
 
 export default function HomeScreen({ navigation }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -43,6 +42,12 @@ export default function HomeScreen({ navigation }) {
         <Text style={styles.headerTitle}>
           Welcome to <Text style={styles.highlight}>Yagya.ai</Text>
         </Text>
+        <TouchableOpacity 
+          style={styles.headerIconRight} 
+          onPress={() => navigation.navigate('Nexus')}
+        >
+          <Image source={require('../../assets/icons/nexus.png')} style={styles.menuIcon} />
+        </TouchableOpacity>
       </View>
 
       {/* OVERLAY (For Outside Tap) */}
@@ -88,9 +93,6 @@ export default function HomeScreen({ navigation }) {
           onSubmitEditing={() => navigation.navigate('Chat')}
         />
       </View>
-
-      {/* FOOTER COMPONENT */}
-      <Footer navigation={navigation} />
     </SafeAreaView>
   );
 }
@@ -99,6 +101,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#EDE9F6' },
   header: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: '#EDE9F6' },
   headerIconLeft: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  headerIconRight: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
   menuIcon: { width: 24, height: 24 },
   headerTitle: { flex: 1, fontSize: 20, fontWeight: 'bold', textAlign: 'center', color: '#000' },
   highlight: { color: '#9A66FF' },
@@ -152,9 +160,10 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     backgroundColor: '#EDE9F6',
     position: 'absolute',
-    bottom: 60, // Puts it right above the footer
+    bottom: 5, // Changed from 0 to 20 to move it up from the very bottom
     left: 0,
     right: 5,
+    marginBottom: 30, // Added margin to push it up further from the bottom
   },
   circleButton: {
     width: 50,
