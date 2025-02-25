@@ -9,6 +9,7 @@ import {
   Image,
   Animated,
   Pressable,
+  TextInput,
 } from 'react-native';
 import Footer from '../components/Footer';
 
@@ -71,14 +72,7 @@ export default function HomeScreen({ navigation }) {
 
       {/* MAIN CONTENT */}
       <ScrollView contentContainerStyle={styles.contentContainer}>
-        <Text style={styles.sectionTitle}>Tips on what to share about yourself</Text>
-        <View style={styles.bulletPoints}>
-          <Text style={styles.tipText}>• Be specific about your goals and aspirations</Text>
-          <Text style={styles.tipText}>• Mention any relevant skills or experiences</Text>
-          <Text style={styles.tipText}>• Describe the impact you hope to make</Text>
-          <Text style={styles.tipText}>• Include any challenges you're facing</Text>
-          <Text style={styles.tipText}>• Share your vision for the future</Text>
-        </View>
+        {/* Empty ScrollView to maintain layout spacing */}
       </ScrollView>
 
       {/* BUTTON CONTAINER */}
@@ -87,12 +81,12 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.circleButtonText}>+</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
+        <TextInput
           style={styles.startButton}
-          onPress={() => navigation.navigate('Chat')}
-        >
-          <Text style={styles.startButtonText}>Start the Yagya!</Text>
-        </TouchableOpacity>
+          placeholder="Message"
+          placeholderTextColor="#33333380"
+          onSubmitEditing={() => navigation.navigate('Chat')}
+        />
       </View>
 
       {/* FOOTER COMPONENT */}
@@ -108,7 +102,10 @@ const styles = StyleSheet.create({
   menuIcon: { width: 24, height: 24 },
   headerTitle: { flex: 1, fontSize: 20, fontWeight: 'bold', textAlign: 'center', color: '#000' },
   highlight: { color: '#9A66FF' },
-  contentContainer: { padding: 20 },
+  contentContainer: { 
+    padding: 20,
+    flex: 1  // Added flex: 1 to maintain the spacing
+  },
 
   // OVERLAY (For Outside Tap)
   overlay: {
@@ -179,21 +176,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   startButton: {
-    backgroundColor: '#9A66FF',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 30,
-    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#DDDDDD',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 0,
     width: '80%',
-  },
-  startButtonText: {
+    color: '#333333',
     fontSize: 18,
-    color: '#FFFFFF',
     fontWeight: 'bold',
   },
 });
