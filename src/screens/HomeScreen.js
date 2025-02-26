@@ -10,12 +10,57 @@ import {
   Animated,
   Pressable,
   TextInput,
+  PanResponder,
 } from 'react-native';
 
 export default function HomeScreen({ navigation }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(''); // State for search query
-  const slideAnim = useRef(new Animated.Value(-300)).current; // Initial position off-screen
+  const slideAnim = useRef(new Animated.Value(-350)).current; // Initial position off-screen
+
+  // Add PanResponder setup
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to horizontal gestures
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (!isMenuOpen && gestureState.dx > 0) {
+          // Opening menu - follow finger from -350 to 0
+          slideAnim.setValue(Math.max(-350, -350 + gestureState.dx));
+        } else if (isMenuOpen && gestureState.dx < 0) {
+          // Closing menu - follow finger from 0 to -350
+          slideAnim.setValue(Math.max(-350, gestureState.dx));
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (!isMenuOpen && gestureState.dx > 50) {
+          // Open menu if swiped right enough
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => setIsMenuOpen(true));
+        } else if (isMenuOpen && gestureState.dx < -50) {
+          // Close menu if swiped left enough
+          Animated.timing(slideAnim, {
+            toValue: -350,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => setIsMenuOpen(false));
+        } else {
+          // Return to previous state if not swiped far enough
+          Animated.timing(slideAnim, {
+            toValue: isMenuOpen ? 0 : -350,
+            duration: 300,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   // Dummy chat history data
   const chatHistory = [
@@ -33,7 +78,7 @@ export default function HomeScreen({ navigation }) {
     const newState = !isMenuOpen;
     setIsMenuOpen(newState);
     Animated.timing(slideAnim, {
-      toValue: newState ? 0 : -300, // Slide in/out
+      toValue: newState ? 0 : -350, // Slide in/out
       duration: 300,
       useNativeDriver: true,
     }).start();
@@ -46,7 +91,7 @@ export default function HomeScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} {...panResponder.panHandlers}>
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerIconLeft} onPress={handleMenuToggle}>
@@ -63,7 +108,7 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* OVERLAY (For Outside Tap) */}
+      {/* OVERLAY (For Outside Tap) - Only show when menu is open */}
       {isMenuOpen && <Pressable style={styles.overlay} onPress={handleOutsideTap} />}
 
       {/* SLIDING MENU */}
@@ -147,10 +192,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    width: 300,
+    width: 350,
     height: '100%',
     backgroundColor: '#FFF',
-    padding: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    paddingLeft: 30,
+    paddingRight: 20,
     zIndex: 1000,
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 0 },
