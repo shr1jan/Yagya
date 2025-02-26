@@ -15,43 +15,37 @@ import {
 
 export default function HomeScreen({ navigation }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(''); // State for search query
-  const slideAnim = useRef(new Animated.Value(-350)).current; // Initial position off-screen
+  const [searchQuery, setSearchQuery] = useState('');
+  const slideAnim = useRef(new Animated.Value(-350)).current;
 
-  // Add PanResponder setup
+  // PanResponder for swipe gestures
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only respond to horizontal gestures
         return Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
       },
       onPanResponderMove: (_, gestureState) => {
         if (!isMenuOpen && gestureState.dx > 0) {
-          // Opening menu - follow finger from -350 to 0
           slideAnim.setValue(Math.max(-350, -350 + gestureState.dx));
         } else if (isMenuOpen && gestureState.dx < 0) {
-          // Closing menu - follow finger from 0 to -350
           slideAnim.setValue(Math.max(-350, gestureState.dx));
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (!isMenuOpen && gestureState.dx > 50) {
-          // Open menu if swiped right enough
+        if (!isMenuOpen && gestureState.dx > 100) {
           Animated.timing(slideAnim, {
             toValue: 0,
             duration: 300,
             useNativeDriver: true,
           }).start(() => setIsMenuOpen(true));
-        } else if (isMenuOpen && gestureState.dx < -50) {
-          // Close menu if swiped left enough
+        } else if (isMenuOpen && gestureState.dx < -100) {
           Animated.timing(slideAnim, {
             toValue: -350,
             duration: 300,
             useNativeDriver: true,
           }).start(() => setIsMenuOpen(false));
         } else {
-          // Return to previous state if not swiped far enough
           Animated.timing(slideAnim, {
             toValue: isMenuOpen ? 0 : -350,
             duration: 300,
@@ -78,7 +72,7 @@ export default function HomeScreen({ navigation }) {
     const newState = !isMenuOpen;
     setIsMenuOpen(newState);
     Animated.timing(slideAnim, {
-      toValue: newState ? 0 : -350, // Slide in/out
+      toValue: newState ? 0 : -350,
       duration: 300,
       useNativeDriver: true,
     }).start();
@@ -86,7 +80,7 @@ export default function HomeScreen({ navigation }) {
 
   const handleOutsideTap = () => {
     if (isMenuOpen) {
-      handleMenuToggle(); // Close the menu
+      handleMenuToggle();
     }
   };
 
@@ -94,7 +88,12 @@ export default function HomeScreen({ navigation }) {
     <SafeAreaView style={styles.container} {...panResponder.panHandlers}>
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerIconLeft} onPress={handleMenuToggle}>
+        <TouchableOpacity
+          style={styles.headerIconLeft}
+          onPress={handleMenuToggle}
+          accessibilityLabel="Open menu"
+          accessibilityRole="button"
+        >
           <Image source={require('../../assets/icons/menu.png')} style={styles.menuIcon} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
@@ -103,12 +102,14 @@ export default function HomeScreen({ navigation }) {
         <TouchableOpacity
           style={styles.headerIconRight}
           onPress={() => navigation.navigate('Nexus')}
+          accessibilityLabel="Go to Nexus"
+          accessibilityRole="button"
         >
           <Image source={require('../../assets/icons/nexus.png')} style={styles.menuIcon} />
         </TouchableOpacity>
       </View>
 
-      {/* OVERLAY (For Outside Tap) - Only show when menu is open */}
+      {/* OVERLAY (For Outside Tap) */}
       {isMenuOpen && <Pressable style={styles.overlay} onPress={handleOutsideTap} />}
 
       {/* SLIDING MENU */}
@@ -116,32 +117,48 @@ export default function HomeScreen({ navigation }) {
         style={[
           styles.menu,
           {
-            transform: [{ translateX: slideAnim }], // Animate the X position
+            transform: [{ translateX: slideAnim }],
           },
         ]}
       >
         {/* SEARCH BAR */}
         <TextInput
           style={styles.searchBar}
-          placeholder="Search chats..."
+          placeholder="Search..."
           placeholderTextColor="#999"
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
 
-        {/* CHAT HISTORY */}
-        <ScrollView style={styles.chatHistoryContainer}>
+        {/* CHAT HISTORY LIST */}
+        <ScrollView
+          style={styles.chatHistoryContainer}
+          contentContainerStyle={styles.chatHistoryContent}
+        >
           {filteredChatHistory.map((chat) => (
             <TouchableOpacity
               key={chat.id}
-              style={styles.chatItem}
+              style={[styles.menuItem, styles.chatHistoryItem]}
               onPress={() => navigation.navigate('Chat', { chatId: chat.id })}
             >
-              <Text style={styles.chatName}>{chat.name}</Text>
-              <Text style={styles.chatLastMessage}>{chat.lastMessage}</Text>
+              <Text style={styles.menuText}>{chat.name}</Text>
+              <Text style={styles.menuSubtext}>{chat.lastMessage}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        {/* SETTINGS BUTTON */}
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => navigation.navigate('Settings')}
+          accessibilityLabel="Go to Settings"
+          accessibilityRole="button"
+        >
+          <Image
+            source={require('../../assets/icons/settings.png')}
+            style={styles.settingsIcon}
+          />
+        </TouchableOpacity>
       </Animated.View>
 
       {/* MAIN CONTENT */}
@@ -151,7 +168,12 @@ export default function HomeScreen({ navigation }) {
 
       {/* BUTTON CONTAINER */}
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.circleButton} onPress={() => console.log('Circle Button Pressed')}>
+        <TouchableOpacity
+          style={styles.circleButton}
+          onPress={() => console.log('Circle Button Pressed')}
+          accessibilityLabel="Create new chat"
+          accessibilityRole="button"
+        >
           <Text style={styles.circleButtonText}>+</Text>
         </TouchableOpacity>
 
@@ -168,7 +190,12 @@ export default function HomeScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#EDE9F6' },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: '#EDE9F6' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#EDE9F6',
+  },
   headerIconLeft: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   headerIconRight: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   menuIcon: { width: 24, height: 24 },
@@ -196,7 +223,7 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#FFF',
     paddingTop: 20,
-    paddingBottom: 20,
+    paddingBottom: 100, // Increased padding to accommodate settings button
     paddingLeft: 30,
     paddingRight: 20,
     zIndex: 1000,
@@ -221,18 +248,22 @@ const styles = StyleSheet.create({
   // CHAT HISTORY
   chatHistoryContainer: {
     flex: 1,
+    marginBottom: 20,
   },
-  chatItem: {
+  chatHistoryContent: {
+    paddingBottom: 20,
+  },
+  menuItem: {
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#EEE',
   },
-  chatName: {
+  menuText: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
   },
-  chatLastMessage: {
+  menuSubtext: {
     fontSize: 14,
     color: '#666',
     marginTop: 5,
@@ -286,5 +317,24 @@ const styles = StyleSheet.create({
     color: '#333333',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+
+  // SETTINGS BUTTON
+  settingsButton: {
+    position: 'absolute',
+    bottom: 40, // Adjusted to ensure it's visible
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1001, // Ensure button appears above other elements
+  },
+  settingsIcon: {
+    width: 24,
+    height: 24,
+    tintColor: '#333',
   },
 });
