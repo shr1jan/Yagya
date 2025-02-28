@@ -11,14 +11,17 @@ import {
   Pressable,
   TextInput,
   PanResponder,
+  Vibration,
 } from 'react-native';
 
 export default function HomeScreen({ navigation }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const slideAnim = useRef(new Animated.Value(-350)).current;
+  const slideSettingsAnim = useRef(new Animated.Value(300)).current;
 
-  // PanResponder for swipe gestures
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -32,20 +35,25 @@ export default function HomeScreen({ navigation }) {
           slideAnim.setValue(Math.max(-350, gestureState.dx));
         }
       },
+
       onPanResponderRelease: (_, gestureState) => {
         if (!isMenuOpen && gestureState.dx > 100) {
+          Vibration.vibrate(10); 
           Animated.timing(slideAnim, {
             toValue: 0,
             duration: 300,
             useNativeDriver: true,
           }).start(() => setIsMenuOpen(true));
         } else if (isMenuOpen && gestureState.dx < -100) {
+          Vibration.vibrate(10);
+          setIsMenuOpen(false);
           Animated.timing(slideAnim, {
             toValue: -350,
             duration: 300,
             useNativeDriver: true,
-          }).start(() => setIsMenuOpen(false));
+          }).start();
         } else {
+          
           Animated.timing(slideAnim, {
             toValue: isMenuOpen ? 0 : -350,
             duration: 300,
@@ -56,14 +64,48 @@ export default function HomeScreen({ navigation }) {
     })
   ).current;
 
-  // Dummy chat history data
+  
+  const settingsPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (isSettingsOpen && gestureState.dy > 0) {
+          slideSettingsAnim.setValue(Math.min(300, gestureState.dy));
+        }
+      },
+
+      onPanResponderRelease: (_, gestureState) => {
+        if (isSettingsOpen && gestureState.dy > 100) {
+          Vibration.vibrate(10); // Add vibration
+          setIsSettingsOpen(false);
+          Animated.timing(slideSettingsAnim, {
+            toValue: 300,
+            duration: 300,
+            useNativeDriver: true,
+          }).start();
+        } else {
+        
+          Animated.timing(slideSettingsAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  
   const chatHistory = [
     { id: 1, name: 'John Doe', lastMessage: 'Hey, how are you?' },
     { id: 2, name: 'Jane Smith', lastMessage: 'See you tomorrow!' },
     { id: 3, name: 'Alice Johnson', lastMessage: 'Did you finish the report?' },
   ];
 
-  // Filter chat history based on search query
+  
   const filteredChatHistory = chatHistory.filter((chat) =>
     chat.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -78,9 +120,72 @@ export default function HomeScreen({ navigation }) {
     }).start();
   };
 
+  const handleSettingsToggle = () => {
+    const newState = !isSettingsOpen;
+    setIsSettingsOpen(newState);
+    
+    
+    if (newState && isMenuOpen) {
+      handleMenuToggle();
+    }
+
+    Animated.timing(slideSettingsAnim, {
+      toValue: newState ? 0 : 300,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  
+  onPanResponderRelease: (_, gestureState) => {
+    if (!isMenuOpen && gestureState.dx > 100) {
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => setIsMenuOpen(true));
+    } else if (isMenuOpen && gestureState.dx < -100) {
+      setIsMenuOpen(false);
+      Animated.timing(slideAnim, {
+        toValue: -350,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      
+      Animated.timing(slideAnim, {
+        toValue: isMenuOpen ? 0 : -350,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
+
+  
+  onPanResponderRelease: (_, gestureState) => {
+    if (isSettingsOpen && gestureState.dy > 100) {
+      setIsSettingsOpen(false);
+      Animated.timing(slideSettingsAnim, {
+        toValue: 300,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      
+      Animated.timing(slideSettingsAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
+
   const handleOutsideTap = () => {
     if (isMenuOpen) {
       handleMenuToggle();
+    }
+    if (isSettingsOpen) {
+      handleSettingsToggle();
     }
   };
 
@@ -150,8 +255,8 @@ export default function HomeScreen({ navigation }) {
         {/* SETTINGS BUTTON */}
         <TouchableOpacity
           style={styles.settingsButton}
-          onPress={() => navigation.navigate('Settings')}
-          accessibilityLabel="Go to Settings"
+          onPress={handleSettingsToggle}
+          accessibilityLabel="Open Settings"
           accessibilityRole="button"
         >
           <Image
@@ -184,6 +289,36 @@ export default function HomeScreen({ navigation }) {
           onSubmitEditing={() => navigation.navigate('Chat')}
         />
       </View>
+    {/* SETTINGS MENU */}
+      {isSettingsOpen && <Pressable style={styles.overlay} onPress={handleOutsideTap} />}
+      <Animated.View
+        style={[
+          styles.settingsMenu,
+          {
+            transform: [{ translateY: slideSettingsAnim }],
+          },
+        ]}
+        {...settingsPanResponder.panHandlers}
+      >
+        <View style={styles.settingsHeader}>
+          <Text style={styles.settingsTitle}>Settings</Text>
+          <TouchableOpacity onPress={handleSettingsToggle}>
+            <Text style={styles.closeButton}>✕</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView style={styles.settingsContent}>
+          <TouchableOpacity 
+            style={styles.settingsItem}
+            onPress={() => {
+              handleSettingsToggle();
+              navigation.navigate('Settings');
+            }}
+          >
+            <Text style={styles.settingsItemText}>Account Settings</Text>
+          </TouchableOpacity>
+          {/* Add more settings items as needed */}
+        </ScrollView>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -211,10 +346,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    zIndex: 999,
   },
 
-  // SLIDING MENU
   menu: {
     position: 'absolute',
     top: 0,
@@ -223,7 +356,7 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#FFF',
     paddingTop: 20,
-    paddingBottom: 100, // Increased padding to accommodate settings button
+    paddingBottom: 100,
     paddingLeft: 30,
     paddingRight: 20,
     zIndex: 1000,
@@ -281,6 +414,38 @@ const styles = StyleSheet.create({
     left: 0,
     right: 5,
     marginBottom: 0,
+    zIndex: 50,
+  },
+
+  
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 75,
+  },
+
+  
+  menu: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 350,
+    height: '100%',
+    backgroundColor: '#FFF',
+    paddingTop: 20,
+    paddingBottom: 100,
+    paddingLeft: 30,
+    paddingRight: 20,
+    zIndex: 100, 
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
   },
   circleButton: {
     width: 50,
@@ -322,7 +487,7 @@ const styles = StyleSheet.create({
   // SETTINGS BUTTON
   settingsButton: {
     position: 'absolute',
-    bottom: 40, // Adjusted to ensure it's visible
+    bottom: 40,
     right: 20,
     width: 40,
     height: 40,
@@ -330,11 +495,58 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1001, // Ensure button appears above other elements
+    zIndex: 1001,
   },
   settingsIcon: {
     width: 24,
     height: 24,
     tintColor: '#333',
+  },
+  // SETTINGS MENU
+  settingsMenu: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 5,
+    zIndex: 1000,
+  },
+  settingsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  settingsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  closeButton: {
+    fontSize: 24,
+    color: '#666',
+    padding: 5,
+  },
+  settingsContent: {
+    flex: 1,
+  },
+  settingsItem: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  settingsItemText: {
+    fontSize: 16,
+    color: '#333',
   },
 });
