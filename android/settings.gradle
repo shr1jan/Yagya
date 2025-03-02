@@ -6,14 +6,23 @@ pluginManagement {
         google()
         mavenCentral()
         maven { url("$rootDir/../node_modules/react-native/android") }
+        jcenter()
     }
-    // This line pulls in the React Native Gradle plugin from node_modules
     includeBuild("../node_modules/@react-native/gradle-plugin")
 }
 
 plugins {
-    // The new plugin that configures React Native settings
     id("com.facebook.react.settings")
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    repositories {
+        google()
+        mavenCentral()
+        jcenter()
+        maven { url("$rootDir/../node_modules/react-native/android") }
+    }
 }
 
 try {
