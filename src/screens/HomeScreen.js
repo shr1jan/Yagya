@@ -15,6 +15,8 @@ import {
   AccessibilityInfo,
   FlatList,
   Platform,
+  ScrollView,
+  Easing,
 } from 'react-native';
 
 // Split into smaller components for better maintainability
@@ -100,41 +102,53 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
   useEffect(() => {
     // Initialize settings pan responder with correct measurements
     panResponderRef.current = PanResponder.create({
-      onStartShouldSetPanResponder: (evt) => {
-        // Explicitly calculate the X position relative to the width of the device
-        const { locationX, locationY } = evt.nativeEvent;
-        const screenWidth = Dimensions.get('window').width;
-        // Don't capture taps in the top-right corner (close button area)
-        if (locationX > screenWidth - 60 && locationY < 60) {
-          return false;
-        }
-        return true;
-      },
+      onStartShouldSetPanResponder: () => false, // Don't capture initial taps
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only respond to significant vertical gestures
-        return Math.abs(gestureState.dy) > 20 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+        // Only respond to significant downward gestures
+        return isOpen && 
+          gestureState.dy > 10 && 
+          Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
       },
       onPanResponderMove: (_, gestureState) => {
         if (isOpen && gestureState.dy > 0) {
-          slideSettingsAnim.setValue(Math.min(300, gestureState.dy));
+          // Ensure we don't set invalid values that could cause the NullPointerException
+          const newValue = Math.min(300, gestureState.dy);
+          if (newValue >= 0 && newValue <= 300) {
+            slideSettingsAnim.setValue(newValue);
+          }
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (isOpen && gestureState.dy > 100) {
+        if (gestureState.dy > 100) {
+          // Close settings if dragged down significantly
           Animated.timing(slideSettingsAnim, {
             toValue: 300,
-            duration: 300,
+            duration: 200,
             useNativeDriver: true,
+            easing: Easing.out(Easing.ease),
           }).start(() => {
             onClose();
           });
         } else {
-          Animated.timing(slideSettingsAnim, {
+          // Snap back to open position
+          Animated.spring(slideSettingsAnim, {
             toValue: 0,
-            duration: 300,
             useNativeDriver: true,
+            damping: 20,
+            mass: 0.8,
+            stiffness: 100,
           }).start();
         }
+      },
+      onPanResponderTerminate: () => {
+        // Reset to open position if gesture is interrupted
+        Animated.spring(slideSettingsAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 20,
+          mass: 0.8,
+          stiffness: 100,
+        }).start();
       },
     });
   }, [isOpen, slideSettingsAnim, onClose]);
@@ -151,17 +165,12 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
       accessibilityLiveRegion="polite"
       importantForAccessibility={isOpen ? 'yes' : 'no-hide-descendants'}
     >
-      {/* Apply pan responder to a specific area, avoiding the close button */}
-      {isOpen && (
-        <View 
-          style={[
-            styles.settingsPanArea,
-            { zIndex: 2 }
-          ]} 
-          {...panResponderRef.current?.panHandlers} 
-        />
-      )}
+      <View 
+        style={styles.settingsPanArea} 
+        {...(panResponderRef.current?.panHandlers || {})} 
+      />
       
+      {/* Settings Header */}
       <View style={styles.settingsHeader}>
         <Text style={styles.settingsTitle}>Settings</Text>
         <TouchableOpacity 
@@ -169,35 +178,153 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
           onPress={onClose}
           accessibilityLabel="Close settings"
           accessibilityRole="button"
-          accessibilityHint="Close the settings menu"
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-          zIndex={15}
         >
-          <Text style={styles.closeButton}>✕</Text>
+          <Text style={styles.closeButton}>×</Text>
         </TouchableOpacity>
       </View>
-      <FlatList
-        data={[
-          { id: 'account', title: 'Account Settings' }
-          // Add more settings items here
-        ]}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.settingsItem}
-            onPress={() => {
-              onClose();
-              onNavigateToSettings(item.id);
-            }}
-            accessibilityLabel={item.title}
-            accessibilityRole="button"
-            accessibilityHint={`Navigate to ${item.title.toLowerCase()}`}
-          >
-            <Text style={styles.settingsItemText}>{item.title}</Text>
-          </TouchableOpacity>
-        )}
+      
+      {/* Settings Content */}
+      <ScrollView 
         style={styles.settingsContent}
-      />
+        contentContainerStyle={styles.settingsContentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Account Settings */}
+        <View style={styles.settingsCategory}>
+          <Text style={styles.categoryTitle}>Account</Text>
+          
+          <TouchableOpacity 
+            style={[styles.settingsItem, styles.settingsItemRow]}
+            onPress={() => onNavigateToSettings('Profile')}
+            accessibilityLabel="Profile settings"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to profile settings"
+          >
+            <View style={styles.settingsItemContent}>
+              <View style={styles.settingsIcon}>
+                <Text style={styles.iconPlaceholder}>👤</Text>
+              </View>
+              <Text style={styles.settingsItemText}>Profile</Text>
+            </View>
+            <View style={styles.itemRightContent}>
+              <Text style={styles.chevron}>›</Text>
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.settingsItem, styles.settingsItemRow]}
+            onPress={() => onNavigateToSettings('Notifications')}
+            accessibilityLabel="Notification settings"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to notification settings"
+          >
+            <View style={styles.settingsItemContent}>
+              <View style={styles.settingsIcon}>
+                <Text style={styles.iconPlaceholder}>🔔</Text>
+              </View>
+              <Text style={styles.settingsItemText}>Notifications</Text>
+            </View>
+            <View style={styles.itemRightContent}>
+              <Text style={styles.chevron}>›</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+        
+        {/* Preferences */}
+        <View style={styles.settingsCategory}>
+          <Text style={styles.categoryTitle}>Preferences</Text>
+          
+          <TouchableOpacity 
+            style={[styles.settingsItem, styles.settingsItemRow]}
+            onPress={() => onNavigateToSettings('AppAppearance')}
+            accessibilityLabel="App appearance settings"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to app appearance settings"
+          >
+            <View style={styles.settingsItemContent}>
+              <View style={styles.settingsIcon}>
+                <Text style={styles.iconPlaceholder}>🎨</Text>
+              </View>
+              <Text style={styles.settingsItemText}>App Appearance</Text>
+            </View>
+            <View style={styles.itemRightContent}>
+              <Text style={styles.chevron}>›</Text>
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.settingsItem, styles.settingsItemRow]}
+            onPress={() => onNavigateToSettings('Privacy')}
+            accessibilityLabel="Privacy settings"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to privacy settings"
+          >
+            <View style={styles.settingsItemContent}>
+              <View style={styles.settingsIcon}>
+                <Text style={styles.iconPlaceholder}>🔒</Text>
+              </View>
+              <Text style={styles.settingsItemText}>Privacy & Security</Text>
+            </View>
+            <View style={styles.itemRightContent}>
+              <Text style={styles.chevron}>›</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+        
+        {/* Support */}
+        <View style={styles.settingsCategory}>
+          <Text style={styles.categoryTitle}>Support</Text>
+          
+          <TouchableOpacity 
+            style={[styles.settingsItem, styles.settingsItemRow]}
+            onPress={() => onNavigateToSettings('Help')}
+            accessibilityLabel="Help center"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to help center"
+          >
+            <View style={styles.settingsItemContent}>
+              <View style={styles.settingsIcon}>
+                <Text style={styles.iconPlaceholder}>❓</Text>
+              </View>
+              <Text style={styles.settingsItemText}>Help Center</Text>
+            </View>
+            <View style={styles.itemRightContent}>
+              <Text style={styles.chevron}>›</Text>
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.settingsItem, styles.settingsItemRow]}
+            onPress={() => onNavigateToSettings('Feedback')}
+            accessibilityLabel="Provide feedback"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to feedback form"
+          >
+            <View style={styles.settingsItemContent}>
+              <View style={styles.settingsIcon}>
+                <Text style={styles.iconPlaceholder}>📝</Text>
+              </View>
+              <Text style={styles.settingsItemText}>Provide Feedback</Text>
+            </View>
+            <View style={styles.itemRightContent}>
+              <Text style={styles.chevron}>›</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+      
+      {/* Settings Footer */}
+      <View style={styles.settingsFooter}>
+        <TouchableOpacity 
+          style={styles.logoutButton}
+          onPress={() => onNavigateToSettings('Logout')}
+          accessibilityLabel="Log out"
+          accessibilityRole="button"
+        >
+          <Text style={styles.logoutText}>Log Out</Text>
+        </TouchableOpacity>
+        <Text style={styles.versionText}>Yagya.ai v1.0.5</Text>
+      </View>
     </Animated.View>
   );
 };
@@ -406,10 +533,9 @@ export default function HomeScreen({ navigation }) {
   const handleSettingsNavigation = useCallback((settingId) => {
     safeNavigate('Settings', { screen: settingId });
   }, [safeNavigate]);
-
   // Edge pan gesture setup
-  const menuEdgePanRef = useRef(null);
-
+    const menuEdgePanRef = useRef(null);
+    const settingsBottomPanRef = useRef(null);
   useEffect(() => {
     // Create edge pan responder - only active on left edge
     menuEdgePanRef.current = PanResponder.create({
@@ -454,68 +580,25 @@ export default function HomeScreen({ navigation }) {
       },
     });
   }, [isMenuOpen, isSettingsOpen, slideAnim, handleVibrate]);
+  // Add null checks for panResponder handlers
+  <View 
+    style={styles.leftEdgePanArea} 
+    {...(menuEdgePanRef.current?.panHandlers || {})} 
+  />
+  // Remove the incorrectly placed View components from here
   
-  // Bottom swipe-up gesture for settings
-  const settingsBottomPanRef = useRef(null);
-  
-  useEffect(() => {
-    settingsBottomPanRef.current = PanResponder.create({
-      onStartShouldSetPanResponder: (evt) => {
-        const windowHeight = Dimensions.get('window').height;
-        // Only respond to gestures in bottom 20px of screen
-        return !isSettingsOpen && !isMenuOpen && evt.nativeEvent.locationY > windowHeight - 20;
-      },
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only respond to significant upward gestures from bottom
-        return (
-          !isSettingsOpen && 
-          !isMenuOpen && 
-          gestureState.dy < -20 && 
-          Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
-        );
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (!isSettingsOpen && gestureState.dy < 0) {
-          // Calculate position for upward gesture (300 - abs(dy))
-          slideSettingsAnim.setValue(Math.max(0, 300 + gestureState.dy));
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (!isSettingsOpen && gestureState.dy < -100) {
-          // Open settings if gesture is significant
-          Animated.timing(slideSettingsAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }).start(() => {
-            setIsSettingsOpen(true);
-            handleVibrate();
-          });
-        } else {
-          // Reset to closed position
-          Animated.timing(slideSettingsAnim, {
-            toValue: 300,
-            duration: 300,
-            useNativeDriver: true,
-          }).start();
-        }
-      }
-    });
-  }, [isSettingsOpen, isMenuOpen, slideSettingsAnim, handleVibrate]);
-
   return (
     <SafeAreaView style={styles.container}>
       {/* Edge pan responder - only active on edges */}
       <View 
         style={styles.leftEdgePanArea} 
-        {...menuEdgePanRef.current?.panHandlers} 
+        {...(menuEdgePanRef.current?.panHandlers || {})} 
       />
       
       <View 
         style={styles.bottomEdgePanArea} 
-        {...settingsBottomPanRef.current?.panHandlers} 
+        {...(settingsBottomPanRef.current?.panHandlers || {})} 
       />
-
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -830,6 +913,152 @@ const styles = StyleSheet.create({
   closeButton: {
     fontSize: 24,
     color: '#666',
+  },
+  settingsContent: {
+    flex: 1,
+  },
+  settingsItem: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  settingsItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  noResultsText: {
+    textAlign: 'center',
+    marginTop: 20,
+    color: '#666',
+    fontSize: 16,
+  },
+  settingsCategory: {
+    marginBottom: 20,
+  },
+  categoryTitle: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 20,
+    marginBottom: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  settingsContentContainer: {
+    paddingBottom: 20,
+  },
+  settingsIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  iconPlaceholder: {
+    fontSize: 16,
+    color: '#666',
+  },
+  itemRightContent: {
+    marginLeft: 'auto',
+  },
+  chevron: {
+    fontSize: 20,
+    color: '#999',
+  },
+  settingsFooter: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#EEE',
+    alignItems: 'center',
+  },
+  logoutButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    backgroundColor: '#FFE5E5',
+  },
+  logoutText: {
+    color: '#FF4444',
+    fontWeight: 'bold',
+  },
+  versionText: {
+    marginTop: 10,
+    color: '#999',
+    fontSize: 12,
+  },
+  settingsContent: {
+    flex: 1,
+  },
+  settingsItem: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  settingsItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  noResultsText: {
+    textAlign: 'center',
+    marginTop: 20,
+    color: '#666',
+    fontSize: 16,
+  },
+  settingsCategory: {
+    marginBottom: 20,
+  },
+  categoryTitle: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 20,
+    marginBottom: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  settingsContentContainer: {
+    paddingBottom: 20,
+  },
+  settingsIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  iconPlaceholder: {
+    fontSize: 16,
+    color: '#666',
+  },
+  itemRightContent: {
+    marginLeft: 'auto',
+  },
+  chevron: {
+    fontSize: 20,
+    color: '#999',
+  },
+  settingsFooter: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#EEE',
+    alignItems: 'center',
+  },
+  logoutButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    backgroundColor: '#FFE5E5',
+  },
+  logoutText: {
+    color: '#FF4444',
+    fontWeight: 'bold',
+  },
+  versionText: {
+    marginTop: 10,
+    color: '#999',
+    fontSize: 12,
   },
   settingsContent: {
     flex: 1,
