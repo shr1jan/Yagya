@@ -169,7 +169,14 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
         style={styles.settingsPanArea} 
         {...(panResponderRef.current?.panHandlers || {})} 
       />
-      
+      {/* Profile Picture */}
+      {isOpen && (
+      <View style={styles.profilePictureContainer}>
+        <View style={styles.profilePicture}>
+          <Text style={styles.profileInitials}>YA</Text>
+        </View>
+      </View>
+      )}
       {/* Settings Header */}
       <View style={styles.settingsHeader}>
         <Text style={styles.settingsTitle}>Settings</Text>
@@ -1071,6 +1078,34 @@ const styles = StyleSheet.create({
   settingsItemText: {
     fontSize: 16,
     color: '#333',
+  },
+  profilePictureContainer: {
+    position: 'absolute',
+    top: -40,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 35,
+  },
+  profilePicture: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#9A66FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  profileInitials: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   noResultsText: {
     textAlign: 'center',
