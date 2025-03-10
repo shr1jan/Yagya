@@ -1,73 +1,142 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
   Text,
   StyleSheet,
   Dimensions,
+  TouchableOpacity,
+  PanResponder
 } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  withSpring,
+  withTiming,
+  runOnJS,
   interpolate,
-  Extrapolate,
-  useAnimatedScrollHandler,
+  Extrapolate
 } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH * 0.8;
-const SPACING = 10;
-const TOTAL_WIDTH = CARD_WIDTH + SPACING;
+const CARD_WIDTH = SCREEN_WIDTH * 0.85;
+const CARD_HEIGHT = 400;
+const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 
-const cards = [
-  { id: 1, title: 'Card 1', color: '#A8D8FF' },
-  { id: 2, title: 'Card 2', color: '#FFA8A8' },
-  { id: 3, title: 'Card 3', color: '#A8FFC1' },
+// Let's expand our original cards data to include category information
+const originalCards = [
+  { id: 1, title: 'Card 1', color: '#A8D8FF', category1: 'cat1', category2: 'cata' },
+  { id: 2, title: 'Card 2', color: '#FFA8A8', category1: 'cat1', category2: 'catb' },
+  { id: 3, title: 'Card 3', color: '#A8FFC1', category1: 'cat2', category2: 'cata' },
+  { id: 4, title: 'Card 4', color: '#FFD8A8', category1: 'cat2', category2: 'catb' },
+  { id: 5, title: 'Card 5', color: '#D8A8FF', category1: 'cat1', category2: 'cata' },
 ];
 
-const CarouselCard = ({ item, index, scrollX }) => {
+const AppSwitcherCard = React.memo(({ 
+  item, 
+  index,
+  removeCard, 
+  onCardPress, 
+  isActive,
+  onSwipe 
+}) => {
+  // Keep the position shared value
+  const position = useSharedValue(0);
+  
+  // Reset position when card becomes inactive
+  useEffect(() => {
+    if (!isActive) {
+      position.value = 0;
+    }
+  }, [isActive]);
+
   const animatedStyle = useAnimatedStyle(() => {
-    const position = TOTAL_WIDTH * index;
-    const distance = scrollX.value - position;
-
+    const rotate = interpolate(
+      position.value,
+      [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
+      [-30, 0, 30],
+      Extrapolate.CLAMP
+    );
+    
     const scale = interpolate(
-      distance,
-      [-TOTAL_WIDTH, 0, TOTAL_WIDTH],
-      [0.8, 1, 0.8],
-      Extrapolate.CLAMP
-    );
-
-    const opacity = interpolate(
-      Math.abs(distance),
-      [0, TOTAL_WIDTH / 2],
-      [1, 0.5],
-      Extrapolate.CLAMP
-    );
-
-    const translateY = interpolate(
-      distance,
-      [-TOTAL_WIDTH, 0, TOTAL_WIDTH],
-      [-30, 0, -30],
+      Math.abs(position.value),
+      [0, SCREEN_WIDTH],
+      [1, 0.8],
       Extrapolate.CLAMP
     );
 
     return {
-      transform: [{ scale }, { translateY }],
-      opacity,
+      transform: [
+        { translateX: position.value },
+        { rotate: `${rotate}deg` },
+        { scale }
+      ],
+      opacity: withSpring(isActive ? 1 : 0.7),
+      zIndex: isActive ? 5 : 5 - index // Stack cards with proper z-index
     };
   });
 
+  // Handle tap on this specific card
+  const handleTap = () => {
+    if (isActive) {
+      // Animate card off screen
+      position.value = withSpring(
+        SCREEN_WIDTH * 1.5,
+        {
+          damping: 20,
+          stiffness: 100
+        }
+      );
+      
+      // Call the parent's onSwipe function
+      onSwipe(item);
+    } else {
+      onCardPress(item);
+    }
+  };
+
   return (
-    <Animated.View style={[styles.card, animatedStyle]}>
-      <View style={[styles.colorBlock, { backgroundColor: item.color }]} />
-      <Text style={styles.cardTitle}>{item.title ? item.title : 'No Title'}</Text>
+    <Animated.View style={[styles.card, { backgroundColor: item.color }, animatedStyle]}>
+      <TouchableOpacity 
+        activeOpacity={0.9}
+        onPress={handleTap}
+        style={styles.cardTouchable}
+      >
+        <View style={styles.appHeaderContainer}>
+          <View style={styles.appIconContainer}>
+            <Text style={styles.appIcon}>{item.id}</Text>
+          </View>
+          <Text style={styles.appName}>{item.title}</Text>
+          
+          {isActive && (
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => removeCard(item.id)}
+            >
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        <View style={styles.cardContent}>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+        </View>
+        
+        <View style={styles.connectButtonContainer}>
+          <TouchableOpacity 
+            style={styles.connectButton}
+            onPress={() => console.log('Connect with', item.title)}
+          >
+            <Text style={styles.connectButtonText}>Connect</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
     </Animated.View>
   );
-};
+});
 
 export default function NexusScreen({ navigation }) {
-  // Dropdown State
   const [open1, setOpen1] = useState(false);
   const [value1, setValue1] = useState(null);
   const [items1, setItems1] = useState([
@@ -81,19 +150,54 @@ export default function NexusScreen({ navigation }) {
     { label: 'Category B', value: 'catb' },
   ]);
 
-  // Carousel Animation
-  const scrollX = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollX.value = event.contentOffset.x;
-    },
-  });
+  // Filtered cards based on dropdown selections
+  const [filteredCards, setFilteredCards] = useState(originalCards);
+  
+  // Update filtered cards when dropdown values change
+  useEffect(() => {
+    let result = [...originalCards];
+    
+    // Filter by first category if selected
+    if (value1) {
+      result = result.filter(card => card.category1 === value1);
+    }
+    
+    // Filter by second category if selected
+    if (value2) {
+      result = result.filter(card => card.category2 === value2);
+    }
+    
+    setFilteredCards(result);
+  }, [value1, value2]);
+
+  // Handle card swipe with improved looping
+  const handleCardSwipe = (item) => {
+    setTimeout(() => {
+      setFilteredCards(prevCards => {
+        const [currentCard, ...remainingCards] = prevCards;
+        return [...remainingCards, currentCard];
+      });
+    }, 300);
+  };
+
+  const handleRemoveCard = (id) => {
+    setFilteredCards(prevCards => prevCards.filter(card => card.id !== id));
+  };
+
+  const handleCardPress = (item) => {
+    console.log('Card pressed:', item);
+  };
+  const renderHomeIndicator = () => (
+    <View style={styles.homeIndicatorContainer}>
+      <View style={styles.homeIndicator} />
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.contentContainer}>
         <Text style={styles.title}>Explore</Text>
-
+  
         {/* Dropdown Layer */}
         <View style={styles.dropdownLayer}>
           <View style={[styles.dropdownBox, open1 ? { zIndex: 10 } : { zIndex: 5 }]}>
@@ -111,7 +215,7 @@ export default function NexusScreen({ navigation }) {
               dropDownContainerStyle={styles.dropdownInner}
             />
           </View>
-
+  
           {value1 && (
             <View style={[styles.dropdownBox, open2 ? { zIndex: 10 } : { zIndex: 5 }]}>
               <DropDownPicker
@@ -130,38 +234,42 @@ export default function NexusScreen({ navigation }) {
             </View>
           )}
         </View>
-
-        {/* Carousel Layer */}
+  
+        {/* Card Stack Layer */}
         <View style={styles.swiperLayer}>
-          <Animated.FlatList
-            data={cards}
-            renderItem={({ item, index }) => (
-              <CarouselCard item={item} index={index} scrollX={scrollX} />
+          <View style={styles.cardsContainer}>
+            {filteredCards.length > 0 ? (
+              filteredCards.map((item, index) => (
+                <AppSwitcherCard 
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  removeCard={handleRemoveCard}
+                  onCardPress={handleCardPress}
+                  onSwipe={handleCardSwipe}
+                  isActive={index === 0}
+                />
+              ))
+            ) : (
+              <View style={styles.noCardsMessage}>
+                <Text style={styles.noCardsText}>No cards match the selected filters</Text>
+              </View>
             )}
-            keyExtractor={(item) => item.id.toString()}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            onScroll={scrollHandler}
-            scrollEventThrottle={16}
-            contentContainerStyle={styles.carouselContainer}
-            snapToInterval={TOTAL_WIDTH} // Ensures only one card moves at a time
-            decelerationRate="normal" // Adjusts the deceleration to make scrolling slower
-            snapToAlignment="center" // Centers the card after snapping
-            pagingEnabled={true} // Enforces paging behavior
-          />
+          </View>
+          
+          {renderHomeIndicator()}
         </View>
       </View>
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#EDE9F6',
   },
   contentContainer: {
-    flex: 1, // This will now take up the full height since there's no footer
+    flex: 1,
   },
   title: {
     fontSize: 24,
@@ -181,7 +289,17 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     top: 140,
     zIndex: 1,
-    paddingHorizontal: 16,
+  },
+  cardsContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollArea: {
+    position: 'absolute',
+    bottom: 50,
+    height: 20,
+    width: '100%',
   },
   dropdownBox: {
     marginBottom: 10,
@@ -203,15 +321,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#000',
   },
-  carouselContainer: {
-    paddingHorizontal: (SCREEN_WIDTH - CARD_WIDTH) / 2,
-  },
   card: {
+    position: 'absolute',
     width: CARD_WIDTH,
-    height: 400,
-    marginRight: SPACING,
+    height: CARD_HEIGHT,
     borderRadius: 20,
-    backgroundColor: '#F0EBFA',
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
@@ -219,7 +333,50 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 6,
     borderWidth: 1,
-    borderColor: '#888',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  appHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    width: '100%',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  appIconContainer: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  appIcon: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  appName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    fontFamily: 'PlusJakartaSans-Medium',
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 15,
+    width: 25,
+    height: 25,
+    borderRadius: 12.5,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   colorBlock: {
     width: '100%',
@@ -232,5 +389,61 @@ const styles = StyleSheet.create({
     color: '#000',
     fontFamily: 'PlusJakartaSans-Medium',
   },
+  homeIndicatorContainer: {
+    position: 'absolute',
+    bottom: 20,
+    width: '100%',
+    alignItems: 'center',
+  },
+  homeIndicator: {
+    width: 100,
+    height: 5,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 2.5,
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    position: 'absolute',
+    bottom: 80,
+    alignSelf: 'center',
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    marginHorizontal: 4,
+  },
+  paginationDotActive: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    transform: [{ scale: 1.2 }],
+  },
+  cardTouchable: {
+    flex: 1,
+  },
+  connectButtonContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingBottom: 30,
+    marginTop: 210, // Added margin to push the button lower
+  },
+  
+  connectButton: {
+    backgroundColor: '#8A2BE2',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  
+  connectButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF', // Changed to white
+    fontFamily: 'PlusJakartaSans-Medium',
+  },
 });
-
