@@ -16,7 +16,8 @@ import Animated, {
   withTiming,
   runOnJS,
   interpolate,
-  Extrapolate
+  Extrapolate,
+  withDelay
 } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -39,17 +40,57 @@ const AppSwitcherCard = React.memo(({
   removeCard, 
   onCardPress, 
   isActive,
-  onSwipe 
+  onSwipe,
+  totalCards,
+  swiping,
+  lastTransition
 }) => {
   // Keep the position shared value
   const position = useSharedValue(0);
+  const isSwiping = useSharedValue(false);
+  const cardScale = useSharedValue(index === 0 ? 1 : interpolate(
+    index,
+    [0, 1, 2, 3],
+    [1, 0.97, 0.94, 0.91],
+    Extrapolate.CLAMP
+  ));
+  const cardOpacity = useSharedValue(index === 0 ? 1 : Math.max(0.9 - (index * 0.1), 0.6));
+  const cardTranslateY = useSharedValue(index === 0 ? 0 : interpolate(
+    index,
+    [0, 1, 2, 3],
+    [0, 10, 20, 30],
+    Extrapolate.CLAMP
+  ));
   
-  // Reset position when card becomes inactive
+  // Handle card becoming active (smooth transition)
   useEffect(() => {
-    if (!isActive) {
-      position.value = 0;
+    if (isActive && index === 0 && lastTransition) {
+      // Animate from stacked position to active position
+      cardScale.value = withTiming(1, { duration: 300 });
+      cardOpacity.value = withTiming(1, { duration: 300 });
+      cardTranslateY.value = withTiming(0, { duration: 300 });
+    } else if (!isActive) {
+      // Non-active cards should maintain their stack position
+      const stackScale = interpolate(
+        index,
+        [0, 1, 2, 3],
+        [1, 0.97, 0.94, 0.91],
+        Extrapolate.CLAMP
+      );
+      
+      const stackTranslateY = interpolate(
+        index,
+        [0, 1, 2, 3],
+        [0, 10, 20, 30],
+        Extrapolate.CLAMP
+      );
+      
+      cardScale.value = withTiming(stackScale, { duration: 300 });
+      cardOpacity.value = withTiming(Math.max(0.9 - (index * 0.1), 0.6), { duration: 300 });
+      cardTranslateY.value = withTiming(stackTranslateY, { duration: 300 });
+      position.value = withTiming(0, { duration: 300 });
     }
-  }, [isActive]);
+  }, [isActive, index, lastTransition]);
 
   const animatedStyle = useAnimatedStyle(() => {
     const rotate = interpolate(
@@ -59,7 +100,7 @@ const AppSwitcherCard = React.memo(({
       Extrapolate.CLAMP
     );
     
-    const scale = interpolate(
+    const moveScale = interpolate(
       Math.abs(position.value),
       [0, SCREEN_WIDTH],
       [1, 0.8],
@@ -70,38 +111,105 @@ const AppSwitcherCard = React.memo(({
       transform: [
         { translateX: position.value },
         { rotate: `${rotate}deg` },
-        { scale }
+        { scale: isActive ? moveScale * cardScale.value : cardScale.value },
+        { translateY: cardTranslateY.value }
       ],
-      opacity: withSpring(isActive ? 1 : 0.7),
+      opacity: cardOpacity.value,
       zIndex: isActive ? 5 : 5 - index // Stack cards with proper z-index
     };
   });
 
+  // Create pan gesture handler
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => isActive && !swiping,
+      onMoveShouldSetPanResponder: (_, gesture) => {
+        // Only respond to horizontal movements when active and not already swiping
+        return isActive && !swiping && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 2;
+      },
+      onPanResponderGrant: () => {
+        isSwiping.value = true;
+        runOnJS(onSwipe)({ type: 'start' });
+      },
+      onPanResponderMove: (event, gesture) => {
+        if (isActive && isSwiping.value) {
+          position.value = gesture.dx;
+        }
+      },
+      onPanResponderRelease: (event, gesture) => {
+        if (isActive && isSwiping.value) {
+          if (gesture.dx > SWIPE_THRESHOLD) {
+            // Swipe right - like
+            position.value = withSpring(
+              SCREEN_WIDTH * 1.5,
+              {
+                damping: 20,
+                stiffness: 100
+              },
+              () => {
+                runOnJS(onSwipe)({ type: 'complete', item, direction: 'right' });
+              }
+            );
+          } else if (gesture.dx < -SWIPE_THRESHOLD) {
+            // Swipe left - pass
+            position.value = withSpring(
+              -SCREEN_WIDTH * 1.5,
+              {
+                damping: 20,
+                stiffness: 100
+              },
+              () => {
+                runOnJS(onSwipe)({ type: 'complete', item, direction: 'left' });
+              }
+            );
+          } else {
+            // Return to center if not swiped far enough
+            position.value = withSpring(0, {}, () => {
+              runOnJS(onSwipe)({ type: 'cancel' });
+            });
+          }
+        }
+      },
+      onPanResponderTerminate: () => {
+        // Handle interruptions
+        position.value = withSpring(0, {}, () => {
+          runOnJS(onSwipe)({ type: 'cancel' });
+        });
+      }
+    })
+  ).current;
+
   // Handle tap on this specific card
   const handleTap = () => {
-    if (isActive) {
+    if (isActive && !swiping) {
       // Animate card off screen
+      isSwiping.value = true;
+      runOnJS(onSwipe)({ type: 'start' });
       position.value = withSpring(
         SCREEN_WIDTH * 1.5,
         {
           damping: 20,
           stiffness: 100
+        },
+        () => {
+          runOnJS(onSwipe)({ type: 'complete', item, direction: 'right' });
         }
       );
-      
-      // Call the parent's onSwipe function
-      onSwipe(item);
-    } else {
+    } else if (!isActive && !swiping) {
       onCardPress(item);
     }
   };
 
   return (
-    <Animated.View style={[styles.card, { backgroundColor: item.color }, animatedStyle]}>
+    <Animated.View 
+      style={[styles.card, { backgroundColor: item.color }, animatedStyle]}
+      {...(isActive ? panResponder.panHandlers : {})}
+    >
       <TouchableOpacity 
         activeOpacity={0.9}
         onPress={handleTap}
         style={styles.cardTouchable}
+        disabled={swiping}
       >
         <View style={styles.appHeaderContainer}>
           <View style={styles.appIconContainer}>
@@ -113,6 +221,8 @@ const AppSwitcherCard = React.memo(({
             <TouchableOpacity 
               style={styles.closeButton}
               onPress={() => removeCard(item.id)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              disabled={swiping}
             >
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
@@ -127,6 +237,7 @@ const AppSwitcherCard = React.memo(({
           <TouchableOpacity 
             style={styles.connectButton}
             onPress={() => console.log('Connect with', item.title)}
+            disabled={swiping}
           >
             <Text style={styles.connectButtonText}>Connect</Text>
           </TouchableOpacity>
@@ -152,6 +263,8 @@ export default function NexusScreen({ navigation }) {
 
   // Filtered cards based on dropdown selections
   const [filteredCards, setFilteredCards] = useState(originalCards);
+  const [swiping, setSwiping] = useState(false);
+  const [lastTransition, setLastTransition] = useState(0);
   
   // Update filtered cards when dropdown values change
   useEffect(() => {
@@ -170,23 +283,67 @@ export default function NexusScreen({ navigation }) {
     setFilteredCards(result);
   }, [value1, value2]);
 
-  // Handle card swipe with improved looping
-  const handleCardSwipe = (item) => {
-    setTimeout(() => {
-      setFilteredCards(prevCards => {
-        const [currentCard, ...remainingCards] = prevCards;
-        return [...remainingCards, currentCard];
-      });
-    }, 300);
+  // Handle card swipe with improved state management
+  const handleSwipeEvent = (event) => {
+    if (event.type === 'start') {
+      setSwiping(true);
+      return;
+    }
+    
+    if (event.type === 'cancel') {
+      setSwiping(false);
+      return;
+    }
+    
+    if (event.type === 'complete') {
+      console.log(`Swiped ${event.direction} on`, event.item.title);
+      
+      // Wait for animation to complete before updating cards
+      setTimeout(() => {
+        setFilteredCards(prevCards => {
+          if (prevCards.length <= 1) {
+            setSwiping(false);
+            return prevCards; // Don't change anything if only one card remains
+          }
+          
+          // Move the first card to the end of the array for infinite looping
+          const [currentCard, ...remainingCards] = prevCards;
+          
+          // Update state to reflect the transition
+          setLastTransition(Date.now());
+          
+          // Small delay before allowing new swipes
+          setTimeout(() => {
+            setSwiping(false);
+          }, 100);
+          
+          // Return cards with the first card moved to the end for infinite looping
+          return [...remainingCards, currentCard];
+        });
+      }, 300); // Wait for exit animation
+    }
   };
 
   const handleRemoveCard = (id) => {
-    setFilteredCards(prevCards => prevCards.filter(card => card.id !== id));
+    if (swiping) return;
+    
+    setFilteredCards(prevCards => {
+      const newCards = prevCards.filter(card => card.id !== id);
+      
+      // If we're removing the top card, mark transition for smooth animations
+      if (prevCards.length > 0 && prevCards[0].id === id) {
+        setLastTransition(Date.now());
+      }
+      
+      return newCards;
+    });
   };
 
   const handleCardPress = (item) => {
+    if (swiping) return;
     console.log('Card pressed:', item);
   };
+  
   const renderHomeIndicator = () => (
     <View style={styles.homeIndicatorContainer}>
       <View style={styles.homeIndicator} />
@@ -213,6 +370,9 @@ export default function NexusScreen({ navigation }) {
               placeholderStyle={styles.dropdownPlaceholder}
               textStyle={styles.dropdownText}
               dropDownContainerStyle={styles.dropdownInner}
+              // Close the other dropdown when this one opens
+              onOpen={() => setOpen2(false)}
+              disabled={swiping}
             />
           </View>
   
@@ -230,6 +390,9 @@ export default function NexusScreen({ navigation }) {
                 placeholderStyle={styles.dropdownPlaceholder}
                 textStyle={styles.dropdownText}
                 dropDownContainerStyle={styles.dropdownInner}
+                // Close the other dropdown when this one opens
+                onOpen={() => setOpen1(false)}
+                disabled={swiping}
               />
             </View>
           )}
@@ -241,13 +404,16 @@ export default function NexusScreen({ navigation }) {
             {filteredCards.length > 0 ? (
               filteredCards.map((item, index) => (
                 <AppSwitcherCard 
-                  key={item.id}
+                  key={`${item.id}-${index}-${lastTransition}`}
                   item={item}
                   index={index}
                   removeCard={handleRemoveCard}
                   onCardPress={handleCardPress}
-                  onSwipe={handleCardSwipe}
+                  onSwipe={handleSwipeEvent}
                   isActive={index === 0}
+                  totalCards={filteredCards.length}
+                  swiping={swiping}
+                  lastTransition={lastTransition}
                 />
               ))
             ) : (
@@ -294,6 +460,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    perspective: 1000, // Add perspective for 3D effect
   },
   scrollArea: {
     position: 'absolute',
@@ -334,6 +501,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
+    backfaceVisibility: 'hidden',
   },
   appHeaderContainer: {
     flexDirection: 'row',
@@ -378,9 +546,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-  colorBlock: {
+  cardContent: {
     width: '100%',
-    height: '70%',
   },
   cardTitle: {
     fontSize: 22,
@@ -401,23 +568,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     borderRadius: 2.5,
   },
-  paginationContainer: {
-    flexDirection: 'row',
-    position: 'absolute',
-    bottom: 80,
-    alignSelf: 'center',
-  },
-  paginationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    marginHorizontal: 4,
-  },
-  paginationDotActive: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    transform: [{ scale: 1.2 }],
-  },
   cardTouchable: {
     flex: 1,
   },
@@ -425,9 +575,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingBottom: 30,
-    marginTop: 210, // Added margin to push the button lower
+    marginTop: 210,
   },
-  
   connectButton: {
     backgroundColor: '#8A2BE2',
     paddingVertical: 12,
@@ -439,11 +588,21 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  
   connectButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#FFFFFF', // Changed to white
+    color: '#FFFFFF',
     fontFamily: 'PlusJakartaSans-Medium',
+  },
+  noCardsMessage: {
+    padding: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  noCardsText: {
+    fontSize: 16,
+    fontFamily: 'PlusJakartaSans-Medium',
+    color: '#666',
   },
 });
