@@ -64,8 +64,8 @@ const MenuDrawer = ({ isOpen, slideAnim, onClose, onSettingsPress, searchQuery, 
         data={filteredChatHistory}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-          <ChatHistoryItem 
-            chat={item} 
+          <ChatHistoryItem
+            chat={item}
             onPress={() => onChatSelect(item.id)}
           />
         )}
@@ -98,15 +98,14 @@ const MenuDrawer = ({ isOpen, slideAnim, onClose, onSettingsPress, searchQuery, 
 
 const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSettings }) => {
   const panResponderRef = useRef(null);
-  
   useEffect(() => {
     // Initialize settings pan responder with correct measurements
     panResponderRef.current = PanResponder.create({
       onStartShouldSetPanResponder: () => false, // Don't capture initial taps
       onMoveShouldSetPanResponder: (_, gestureState) => {
         // Only respond to significant downward gestures
-        return isOpen && 
-          gestureState.dy > 10 && 
+        return isOpen &&
+          gestureState.dy > 10 &&
           Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
       },
       onPanResponderMove: (_, gestureState) => {
@@ -152,7 +151,6 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
       },
     });
   }, [isOpen, slideSettingsAnim, onClose]);
-  
   return (
     <Animated.View
       style={[
@@ -165,9 +163,9 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
       accessibilityLiveRegion="polite"
       importantForAccessibility={isOpen ? 'yes' : 'no-hide-descendants'}
     >
-      <View 
-        style={styles.settingsPanArea} 
-        {...(panResponderRef.current?.panHandlers || {})} 
+      <View
+        style={styles.settingsPanArea}
+        {...(panResponderRef.current?.panHandlers || {})}
       />
       {/* Profile Picture */}
       {isOpen && (
@@ -180,7 +178,7 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
       {/* Settings Header */}
       <View style={styles.settingsHeader}>
         <Text style={styles.settingsTitle}>Settings</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.closeButtonContainer}
           onPress={onClose}
           accessibilityLabel="Close settings"
@@ -189,9 +187,8 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
           <Text style={styles.closeButton}>×</Text>
         </TouchableOpacity>
       </View>
-      
       {/* Settings Content */}
-      <ScrollView 
+      <ScrollView
         style={styles.settingsContent}
         contentContainerStyle={styles.settingsContentContainer}
         showsVerticalScrollIndicator={false}
@@ -199,8 +196,7 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
         {/* Account Settings */}
         <View style={styles.settingsCategory}>
           <Text style={styles.categoryTitle}>Account</Text>
-          
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.settingsItem, styles.settingsItemRow]}
             onPress={() => onNavigateToSettings('Profile')}
             accessibilityLabel="Profile settings"
@@ -217,8 +213,7 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
               <Text style={styles.chevron}>›</Text>
             </View>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.settingsItem, styles.settingsItemRow]}
             onPress={() => onNavigateToSettings('Notifications')}
             accessibilityLabel="Notification settings"
@@ -236,12 +231,10 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
             </View>
           </TouchableOpacity>
         </View>
-        
         {/* Preferences */}
         <View style={styles.settingsCategory}>
           <Text style={styles.categoryTitle}>Preferences</Text>
-          
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.settingsItem, styles.settingsItemRow]}
             onPress={() => onNavigateToSettings('AppAppearance')}
             accessibilityLabel="App appearance settings"
@@ -258,8 +251,7 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
               <Text style={styles.chevron}>›</Text>
             </View>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.settingsItem, styles.settingsItemRow]}
             onPress={() => onNavigateToSettings('Privacy')}
             accessibilityLabel="Privacy settings"
@@ -277,12 +269,10 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
             </View>
           </TouchableOpacity>
         </View>
-        
         {/* Support */}
         <View style={styles.settingsCategory}>
           <Text style={styles.categoryTitle}>Support</Text>
-          
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.settingsItem, styles.settingsItemRow]}
             onPress={() => onNavigateToSettings('Help')}
             accessibilityLabel="Help center"
@@ -299,8 +289,7 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
               <Text style={styles.chevron}>›</Text>
             </View>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.settingsItem, styles.settingsItemRow]}
             onPress={() => onNavigateToSettings('Feedback')}
             accessibilityLabel="Provide feedback"
@@ -319,10 +308,9 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
           </TouchableOpacity>
         </View>
       </ScrollView>
-      
       {/* Settings Footer */}
       <View style={styles.settingsFooter}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.logoutButton}
           onPress={() => onNavigateToSettings('Logout')}
           accessibilityLabel="Log out"
@@ -336,16 +324,12 @@ const SettingsPanel = ({ isOpen, slideSettingsAnim, onClose, onNavigateToSetting
   );
 };
 
-// Import for dimensions
-import { Dimensions } from 'react-native';
-
 export default function HomeScreen({ navigation }) {
   // State management
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [messageText, setMessageText] = useState('');
-  
   // Refs for animations
   const slideAnim = useRef(new Animated.Value(-350)).current;
   const slideSettingsAnim = useRef(new Animated.Value(300)).current;
@@ -369,22 +353,24 @@ export default function HomeScreen({ navigation }) {
 
   // Cleanup on unmount
   useEffect(() => {
+    // Capture the current ref value inside the effect
+    const currentToastTimeoutRef = toastTimeoutRef.current;
     return () => {
       // Clean up any pending animations
       slideAnim.stopAnimation();
       slideSettingsAnim.stopAnimation();
-      
-      // Clear any pending timeouts
-      if (toastTimeoutRef.current) {
-        clearTimeout(toastTimeoutRef.current);
+      // Clear any pending timeouts using the captured value
+      if (currentToastTimeoutRef) {
+        clearTimeout(currentToastTimeoutRef);
       }
     };
   }, [slideAnim, slideSettingsAnim]);
 
   // Improved vibration handler with support check
   const handleVibrate = useCallback(() => {
-    if (!isVibrationSupportedRef.current) return;
-    
+    if (!isVibrationSupportedRef.current) {
+      return;
+    }
     try {
       // Use appropriate vibration duration based on platform
       if (Platform.OS === 'ios') {
@@ -403,7 +389,6 @@ export default function HomeScreen({ navigation }) {
 
   const handleMenuToggle = useCallback(() => {
     const newState = !isMenuOpen;
-    
     // Start animation
     Animated.timing(slideAnim, {
       toValue: newState ? 0 : -350,
@@ -414,7 +399,6 @@ export default function HomeScreen({ navigation }) {
       setIsMenuOpen(newState);
       if (newState) {
         handleVibrate();
-        
         // Move accessibility focus to the menu
         AccessibilityInfo.isScreenReaderEnabled().then(isEnabled => {
           if (isEnabled) {
@@ -424,16 +408,16 @@ export default function HomeScreen({ navigation }) {
         });
       }
     });
-    
     // Close settings if menu is opening
     if (newState && isSettingsOpen) {
       handleSettingsClose();
     }
-  }, [isMenuOpen, isSettingsOpen, slideAnim, handleVibrate]);
+  }, [isMenuOpen, isSettingsOpen, slideAnim, handleVibrate, handleSettingsClose]);
 
   const handleMenuClose = useCallback(() => {
-    if (!isMenuOpen) return;
-    
+    if (!isMenuOpen) {
+      return;
+    }
     Animated.timing(slideAnim, {
       toValue: -350,
       duration: 300,
@@ -445,7 +429,6 @@ export default function HomeScreen({ navigation }) {
 
   const handleSettingsToggle = useCallback(() => {
     const newState = !isSettingsOpen;
-    
     Animated.timing(slideSettingsAnim, {
       toValue: newState ? 0 : 300,
       duration: 300,
@@ -454,7 +437,6 @@ export default function HomeScreen({ navigation }) {
       setIsSettingsOpen(newState);
       if (newState) {
         handleVibrate();
-        
         // Move accessibility focus to settings panel
         AccessibilityInfo.isScreenReaderEnabled().then(isEnabled => {
           if (isEnabled) {
@@ -463,7 +445,6 @@ export default function HomeScreen({ navigation }) {
         });
       }
     });
-    
     // Close menu if settings is opening
     if (newState && isMenuOpen) {
       handleMenuClose();
@@ -471,8 +452,9 @@ export default function HomeScreen({ navigation }) {
   }, [isSettingsOpen, slideSettingsAnim, handleVibrate, isMenuOpen, handleMenuClose]);
 
   const handleSettingsClose = useCallback(() => {
-    if (!isSettingsOpen) return;
-    
+    if (!isSettingsOpen) {
+      return;
+    }
     Animated.timing(slideSettingsAnim, {
       toValue: 300,
       duration: 300,
@@ -485,7 +467,7 @@ export default function HomeScreen({ navigation }) {
   const handleOverlayTap = useCallback(() => {
     if (isMenuOpen) {
       handleMenuClose();
-    } 
+    }
     if (isSettingsOpen) {
       handleSettingsClose();
     }
@@ -497,31 +479,27 @@ export default function HomeScreen({ navigation }) {
       if (!navigation) {
         throw new Error('Navigation prop is undefined');
       }
-      
       if (!screenName) {
         throw new Error('Screen name is required');
       }
-      
       navigation.navigate(screenName, params);
       return true; // Successfully navigated
     } catch (error) {
       console.error('Navigation failed:', error);
-      
       // More descriptive error messages based on the error
       const errorMessage = error.message || 'Navigation failed';
       if (Platform.OS === 'android') {
         ToastAndroid.show(errorMessage, ToastAndroid.SHORT);
       }
-      
       return false; // Navigation failed
     }
   }, [navigation]);
 
   const handleSubmitMessage = useCallback(() => {
-    if (!messageText.trim()) return;
-    
+    if (!messageText.trim()) {
+      return;
+    }
     const success = safeNavigate('Chat', { initialMessage: messageText });
-    
     // Only clear input if navigation was successful
     if (success) {
       setMessageText('');
@@ -530,7 +508,6 @@ export default function HomeScreen({ navigation }) {
 
   const handleChatSelect = useCallback((chatId) => {
     const success = safeNavigate('Chat', { chatId });
-    
     // Close menu only if navigation succeeded
     if (success) {
       handleMenuClose();
@@ -553,9 +530,9 @@ export default function HomeScreen({ navigation }) {
       onMoveShouldSetPanResponder: (_, gestureState) => {
         // Only respond to rightward gestures from left edge
         return (
-          !isMenuOpen && 
-          !isSettingsOpen && 
-          gestureState.dx > 20 && 
+          !isMenuOpen &&
+          !isSettingsOpen &&
+          gestureState.dx > 20 &&
           Math.abs(gestureState.dx) > Math.abs(gestureState.dy)
         );
       },
@@ -588,23 +565,20 @@ export default function HomeScreen({ navigation }) {
     });
   }, [isMenuOpen, isSettingsOpen, slideAnim, handleVibrate]);
   // Add null checks for panResponder handlers
-  <View 
-    style={styles.leftEdgePanArea} 
-    {...(menuEdgePanRef.current?.panHandlers || {})} 
-  />
-  // Remove the incorrectly placed View components from here
-  
+  <View
+    style={styles.leftEdgePanArea}
+    {...(menuEdgePanRef.current?.panHandlers || {})}
+  />;
   return (
     <SafeAreaView style={styles.container}>
       {/* Edge pan responder - only active on edges */}
-      <View 
-        style={styles.leftEdgePanArea} 
-        {...(menuEdgePanRef.current?.panHandlers || {})} 
+      <View
+        style={styles.leftEdgePanArea}
+        {...(menuEdgePanRef.current?.panHandlers || {})}
       />
-      
-      <View 
-        style={styles.bottomEdgePanArea} 
-        {...(settingsBottomPanRef.current?.panHandlers || {})} 
+      <View
+        style={styles.bottomEdgePanArea}
+        {...(settingsBottomPanRef.current?.panHandlers || {})}
       />
       {/* Header */}
       <View style={styles.header}>
@@ -695,8 +669,8 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     backgroundColor: '#EDE9F6',
   },
   header: {
@@ -706,34 +680,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#EDE9F6',
     zIndex: 1, // Lower z-index for base layers
   },
-  headerIconLeft: { 
-    width: 40, 
-    height: 40, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  headerIconLeft: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  headerIconRight: { 
-    width: 40, 
-    height: 40, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  headerIconRight: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  menuIcon: { 
-    width: 24, 
-    height: 24 
+  menuIcon: {
+    width: 24,
+    height: 24,
   },
-  headerTitle: { 
-    flex: 1, 
-    fontSize: 20, 
-    fontWeight: 'bold', 
-    textAlign: 'center', 
-    color: '#000' 
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#000',
+    fontFamily: 'PlusJakartaSans-Medium',
   },
-  highlight: { 
-    color: '#9A66FF' 
+  highlight: {
+    color: '#9A66FF',
   },
-  contentContainer: { 
-    flex: 1 
+  contentContainer: {
+    flex: 1,
   },
   leftEdgePanArea: {
     position: 'absolute',
@@ -953,15 +928,6 @@ const styles = StyleSheet.create({
   settingsContentContainer: {
     paddingBottom: 20,
   },
-  settingsIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#F0F0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
   iconPlaceholder: {
     fontSize: 16,
     color: '#666',
@@ -993,91 +959,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: '#999',
     fontSize: 12,
-  },
-  settingsContent: {
-    flex: 1,
-  },
-  settingsItem: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-  },
-  settingsItemText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  noResultsText: {
-    textAlign: 'center',
-    marginTop: 20,
-    color: '#666',
-    fontSize: 16,
-  },
-  settingsCategory: {
-    marginBottom: 20,
-  },
-  categoryTitle: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 20,
-    marginBottom: 10,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  settingsContentContainer: {
-    paddingBottom: 20,
-  },
-  settingsIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#F0F0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  iconPlaceholder: {
-    fontSize: 16,
-    color: '#666',
-  },
-  itemRightContent: {
-    marginLeft: 'auto',
-  },
-  chevron: {
-    fontSize: 20,
-    color: '#999',
-  },
-  settingsFooter: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#EEE',
-    alignItems: 'center',
-  },
-  logoutButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    backgroundColor: '#FFE5E5',
-  },
-  logoutText: {
-    color: '#FF4444',
-    fontWeight: 'bold',
-  },
-  versionText: {
-    marginTop: 10,
-    color: '#999',
-    fontSize: 12,
-  },
-  settingsContent: {
-    flex: 1,
-  },
-  settingsItem: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-  },
-  settingsItemText: {
-    fontSize: 16,
-    color: '#333',
   },
   profilePictureContainer: {
     position: 'absolute',
@@ -1107,10 +988,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  noResultsText: {
-    textAlign: 'center',
-    marginTop: 20,
-    color: '#666',
-    fontSize: 16,
-  }
 });

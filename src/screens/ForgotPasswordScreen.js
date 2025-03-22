@@ -5,15 +5,42 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet
+  StyleSheet,
 } from 'react-native';
 
 export default function ForgotPasswordScreen({ navigation }) {
   const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
-  const onResetPassword = () => {
-    // TODO: Implement reset password logic
-    navigation.goBack();
+  const onResetPassword = async () => {
+    // Input validation
+    if (!email || !email.includes('@')) {
+      setErrorMessage('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setErrorMessage('');
+      // Implement the password reset logic
+      // This would typically be an API call to your backend
+      // Example implementation:
+      // await authService.sendPasswordResetEmail(email);
+      // For demonstration purposes, simulating API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setSuccessMessage('Password reset link sent to your email');
+      // Wait briefly to show success message before navigating back
+      setTimeout(() => {
+        navigation.goBack();
+      }, 2000);
+    } catch (error) {
+      setErrorMessage('Failed to send reset link. Please try again.');
+      console.error('Password reset error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -25,9 +52,23 @@ export default function ForgotPasswordScreen({ navigation }) {
         placeholderTextColor="#999"
         value={email}
         onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
       />
-      <TouchableOpacity style={styles.resetButton} onPress={onResetPassword}>
-        <Text style={styles.resetButtonText}>Send Reset Link</Text>
+      {errorMessage ? (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      ) : null}
+      {successMessage ? (
+        <Text style={styles.successText}>{successMessage}</Text>
+      ) : null}
+      <TouchableOpacity
+        style={[styles.resetButton, isLoading && styles.disabledButton]}
+        onPress={onResetPassword}
+        disabled={isLoading}
+      >
+        <Text style={styles.resetButtonText}>
+          {isLoading ? 'Sending...' : 'Send Reset Link'}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -70,5 +111,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
     fontFamily: 'PlusJakartaSans-Medium',
+  },
+  errorText: {
+    color: 'red',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  successText: {
+    color: 'green',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  disabledButton: {
+    backgroundColor: '#C0B3E1',
   },
 });

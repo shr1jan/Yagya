@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
@@ -6,246 +6,103 @@ import {
   StyleSheet,
   Dimensions,
   TouchableOpacity,
-  PanResponder
+  Image,
 } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming,
+  // withTiming is removed since it's not used
   runOnJS,
   interpolate,
   Extrapolate,
-  withDelay
+  useAnimatedGestureHandler,
 } from 'react-native-reanimated';
+import { PanGestureHandler } from 'react-native-gesture-handler';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.85;
 const CARD_HEIGHT = 400;
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 
 // Let's expand our original cards data to include category information
 const originalCards = [
-  { id: 1, title: 'Card 1', color: '#A8D8FF', category1: 'cat1', category2: 'cata' },
-  { id: 2, title: 'Card 2', color: '#FFA8A8', category1: 'cat1', category2: 'catb' },
-  { id: 3, title: 'Card 3', color: '#A8FFC1', category1: 'cat2', category2: 'cata' },
-  { id: 4, title: 'Card 4', color: '#FFD8A8', category1: 'cat2', category2: 'catb' },
-  { id: 5, title: 'Card 5', color: '#D8A8FF', category1: 'cat1', category2: 'cata' },
+  { id: 1, title: 'Card 1', color: '#A8D8FF', category1: 'cat1', category2: 'cata', img: 'https://images.unsplash.com/photo-1480074568708-e7b720bb3f09?q=80&w=500&auto=format' },
+  { id: 2, title: 'Card 2', color: '#FFA8A8', category1: 'cat1', category2: 'catb', img: 'https://images.unsplash.com/photo-1449844908441-8829872d2607?q=80&w=500&auto=format' },
+  { id: 3, title: 'Card 3', color: '#A8FFC1', category1: 'cat2', category2: 'cata', img: 'https://images.unsplash.com/photo-1452626212852-811d58933cae?q=80&w=500&auto=format' },
+  { id: 4, title: 'Card 4', color: '#FFD8A8', category1: 'cat2', category2: 'catb', img: 'https://images.unsplash.com/photo-1572120360610-d971b9d7767c?q=80&w=500&auto=format' },
+  { id: 5, title: 'Card 5', color: '#D8A8FF', category1: 'cat1', category2: 'cata', img: 'https://images.unsplash.com/photo-1480074568708-e7b720bb3f09?q=80&w=500&auto=format' },
 ];
 
-const AppSwitcherCard = React.memo(({ 
-  item, 
-  index,
-  removeCard, 
-  onCardPress, 
+const CardRotate = ({
+  children,
+  onSendToBack,
+  sensitivity,
+  item,
   isActive,
-  onSwipe,
-  totalCards,
-  swiping,
-  lastTransition
+  cardDimensions,
 }) => {
-  // Keep the position shared value
-  const position = useSharedValue(0);
-  const isSwiping = useSharedValue(false);
-  const cardScale = useSharedValue(index === 0 ? 1 : interpolate(
-    index,
-    [0, 1, 2, 3],
-    [1, 0.97, 0.94, 0.91],
-    Extrapolate.CLAMP
-  ));
-  const cardOpacity = useSharedValue(index === 0 ? 1 : Math.max(0.9 - (index * 0.1), 0.6));
-  const cardTranslateY = useSharedValue(index === 0 ? 0 : interpolate(
-    index,
-    [0, 1, 2, 3],
-    [0, 10, 20, 30],
-    Extrapolate.CLAMP
-  ));
-  
-  // Handle card becoming active (smooth transition)
-  useEffect(() => {
-    if (isActive && index === 0 && lastTransition) {
-      // Animate from stacked position to active position
-      cardScale.value = withTiming(1, { duration: 300 });
-      cardOpacity.value = withTiming(1, { duration: 300 });
-      cardTranslateY.value = withTiming(0, { duration: 300 });
-    } else if (!isActive) {
-      // Non-active cards should maintain their stack position
-      const stackScale = interpolate(
-        index,
-        [0, 1, 2, 3],
-        [1, 0.97, 0.94, 0.91],
-        Extrapolate.CLAMP
-      );
-      
-      const stackTranslateY = interpolate(
-        index,
-        [0, 1, 2, 3],
-        [0, 10, 20, 30],
-        Extrapolate.CLAMP
-      );
-      
-      cardScale.value = withTiming(stackScale, { duration: 300 });
-      cardOpacity.value = withTiming(Math.max(0.9 - (index * 0.1), 0.6), { duration: 300 });
-      cardTranslateY.value = withTiming(stackTranslateY, { duration: 300 });
-      position.value = withTiming(0, { duration: 300 });
-    }
-  }, [isActive, index, lastTransition]);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+
+  const gestureHandler = useAnimatedGestureHandler({
+    onStart: (_, ctx) => {
+      ctx.startX = translateX.value;
+      ctx.startY = translateY.value;
+    },
+    onActive: (event, ctx) => {
+      translateX.value = ctx.startX + event.translationX;
+      translateY.value = ctx.startY + event.translationY;
+    },
+    onEnd: (event, _) => {
+      if (
+        Math.abs(event.translationX) > sensitivity ||
+        Math.abs(event.translationY) > sensitivity
+      ) {
+        runOnJS(onSendToBack)(item.id);
+      } else {
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+      }
+    },
+  });
 
   const animatedStyle = useAnimatedStyle(() => {
-    const rotate = interpolate(
-      position.value,
-      [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
-      [-30, 0, 30],
+    const rotateX = interpolate(
+      translateY.value,
+      [-100, 100],
+      [30, -30],
       Extrapolate.CLAMP
     );
-    
-    const moveScale = interpolate(
-      Math.abs(position.value),
-      [0, SCREEN_WIDTH],
-      [1, 0.8],
+    const rotateY = interpolate(
+      translateX.value,
+      [-100, 100],
+      [-30, 30],
       Extrapolate.CLAMP
     );
 
     return {
       transform: [
-        { translateX: position.value },
-        { rotate: `${rotate}deg` },
-        { scale: isActive ? moveScale * cardScale.value : cardScale.value },
-        { translateY: cardTranslateY.value }
+        { translateX: translateX.value },
+        { translateY: translateY.value },
+        { rotateX: `${rotateX}deg` },
+        { rotateY: `${rotateY}deg` },
       ],
-      opacity: cardOpacity.value,
-      zIndex: isActive ? 5 : 5 - index // Stack cards with proper z-index
     };
   });
 
-  // Create pan gesture handler
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => isActive && !swiping,
-      onMoveShouldSetPanResponder: (_, gesture) => {
-        // Only respond to horizontal movements when active and not already swiping
-        return isActive && !swiping && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 2;
-      },
-      onPanResponderGrant: () => {
-        isSwiping.value = true;
-        runOnJS(onSwipe)({ type: 'start' });
-      },
-      onPanResponderMove: (event, gesture) => {
-        if (isActive && isSwiping.value) {
-          position.value = gesture.dx;
-        }
-      },
-      onPanResponderRelease: (event, gesture) => {
-        if (isActive && isSwiping.value) {
-          if (gesture.dx > SWIPE_THRESHOLD) {
-            // Swipe right - like
-            position.value = withSpring(
-              SCREEN_WIDTH * 1.5,
-              {
-                damping: 20,
-                stiffness: 100
-              },
-              () => {
-                runOnJS(onSwipe)({ type: 'complete', item, direction: 'right' });
-              }
-            );
-          } else if (gesture.dx < -SWIPE_THRESHOLD) {
-            // Swipe left - pass
-            position.value = withSpring(
-              -SCREEN_WIDTH * 1.5,
-              {
-                damping: 20,
-                stiffness: 100
-              },
-              () => {
-                runOnJS(onSwipe)({ type: 'complete', item, direction: 'left' });
-              }
-            );
-          } else {
-            // Return to center if not swiped far enough
-            position.value = withSpring(0, {}, () => {
-              runOnJS(onSwipe)({ type: 'cancel' });
-            });
-          }
-        }
-      },
-      onPanResponderTerminate: () => {
-        // Handle interruptions
-        position.value = withSpring(0, {}, () => {
-          runOnJS(onSwipe)({ type: 'cancel' });
-        });
-      }
-    })
-  ).current;
-
-  // Handle tap on this specific card
-  const handleTap = () => {
-    if (isActive && !swiping) {
-      // Animate card off screen
-      isSwiping.value = true;
-      runOnJS(onSwipe)({ type: 'start' });
-      position.value = withSpring(
-        SCREEN_WIDTH * 1.5,
-        {
-          damping: 20,
-          stiffness: 100
-        },
-        () => {
-          runOnJS(onSwipe)({ type: 'complete', item, direction: 'right' });
-        }
-      );
-    } else if (!isActive && !swiping) {
-      onCardPress(item);
-    }
-  };
-
-  return (
-    <Animated.View 
-      style={[styles.card, { backgroundColor: item.color }, animatedStyle]}
-      {...(isActive ? panResponder.panHandlers : {})}
-    >
-      <TouchableOpacity 
-        activeOpacity={0.9}
-        onPress={handleTap}
-        style={styles.cardTouchable}
-        disabled={swiping}
-      >
-        <View style={styles.appHeaderContainer}>
-          <View style={styles.appIconContainer}>
-            <Text style={styles.appIcon}>{item.id}</Text>
-          </View>
-          <Text style={styles.appName}>{item.title}</Text>
-          
-          {isActive && (
-            <TouchableOpacity 
-              style={styles.closeButton}
-              onPress={() => removeCard(item.id)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              disabled={swiping}
-            >
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        
-        <View style={styles.cardContent}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-        </View>
-        
-        <View style={styles.connectButtonContainer}>
-          <TouchableOpacity 
-            style={styles.connectButton}
-            onPress={() => console.log('Connect with', item.title)}
-            disabled={swiping}
-          >
-            <Text style={styles.connectButtonText}>Connect</Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
+  return isActive ? (
+    <PanGestureHandler onGestureEvent={gestureHandler}>
+      <Animated.View style={[styles.cardRotate, animatedStyle]}>
+        {children}
+      </Animated.View>
+    </PanGestureHandler>
+  ) : (
+    <Animated.View style={[styles.cardRotate]}>
+      {children}
     </Animated.View>
   );
-});
+};
 
 export default function NexusScreen({ navigation }) {
   const [open1, setOpen1] = useState(false);
@@ -264,86 +121,57 @@ export default function NexusScreen({ navigation }) {
   // Filtered cards based on dropdown selections
   const [filteredCards, setFilteredCards] = useState(originalCards);
   const [swiping, setSwiping] = useState(false);
-  const [lastTransition, setLastTransition] = useState(0);
-  
   // Update filtered cards when dropdown values change
   useEffect(() => {
     let result = [...originalCards];
-    
     // Filter by first category if selected
     if (value1) {
       result = result.filter(card => card.category1 === value1);
     }
-    
     // Filter by second category if selected
     if (value2) {
       result = result.filter(card => card.category2 === value2);
     }
-    
     setFilteredCards(result);
   }, [value1, value2]);
 
-  // Handle card swipe with improved state management
-  const handleSwipeEvent = (event) => {
-    if (event.type === 'start') {
-      setSwiping(true);
+  const sendToBack = (id) => {
+    if (swiping) {
       return;
     }
-    
-    if (event.type === 'cancel') {
-      setSwiping(false);
-      return;
-    }
-    
-    if (event.type === 'complete') {
-      console.log(`Swiped ${event.direction} on`, event.item.title);
-      
-      // Wait for animation to complete before updating cards
-      setTimeout(() => {
-        setFilteredCards(prevCards => {
-          if (prevCards.length <= 1) {
-            setSwiping(false);
-            return prevCards; // Don't change anything if only one card remains
-          }
-          
-          // Move the first card to the end of the array for infinite looping
-          const [currentCard, ...remainingCards] = prevCards;
-          
-          // Update state to reflect the transition
-          setLastTransition(Date.now());
-          
-          // Small delay before allowing new swipes
-          setTimeout(() => {
-            setSwiping(false);
-          }, 100);
-          
-          // Return cards with the first card moved to the end for infinite looping
-          return [...remainingCards, currentCard];
-        });
-      }, 300); // Wait for exit animation
-    }
-  };
-
-  const handleRemoveCard = (id) => {
-    if (swiping) return;
-    
-    setFilteredCards(prevCards => {
-      const newCards = prevCards.filter(card => card.id !== id);
-      
-      // If we're removing the top card, mark transition for smooth animations
-      if (prevCards.length > 0 && prevCards[0].id === id) {
-        setLastTransition(Date.now());
+    setSwiping(true);
+    setFilteredCards((prev) => {
+      const newCards = [...prev];
+      const index = newCards.findIndex((card) => card.id === id);
+      if (index !== -1) {
+        const [card] = newCards.splice(index, 1);
+        newCards.push(card); // Move to end of array
       }
-      
+      setTimeout(() => {
+        setSwiping(false);
+      }, 300);
       return newCards;
     });
   };
 
-  const handleCardPress = (item) => {
-    if (swiping) return;
-    console.log('Card pressed:', item);
+  const handleRemoveCard = (id) => {
+    if (swiping) {
+      return;
+    }
+    setFilteredCards(prevCards => {
+      return prevCards.filter(card => card.id !== id);
+    });
   };
-  
+
+  const handleCardPress = (id) => {
+    if (swiping) {
+      return;
+    }
+    // If it's the top card, send it to back
+    if (filteredCards.length > 0 && filteredCards[0].id === id) {
+      sendToBack(id);
+    }
+  };
   const renderHomeIndicator = () => (
     <View style={styles.homeIndicatorContainer}>
       <View style={styles.homeIndicator} />
@@ -354,10 +182,10 @@ export default function NexusScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <View style={styles.contentContainer}>
         <Text style={styles.title}>Explore</Text>
-  
+
         {/* Dropdown Layer */}
         <View style={styles.dropdownLayer}>
-          <View style={[styles.dropdownBox, open1 ? { zIndex: 10 } : { zIndex: 5 }]}>
+          <View style={[styles.dropdownBox, styles[open1 ? 'zIndexHigh' : 'zIndexLow']]}>
             <DropDownPicker
               open={open1}
               value={value1}
@@ -375,9 +203,9 @@ export default function NexusScreen({ navigation }) {
               disabled={swiping}
             />
           </View>
-  
+
           {value1 && (
-            <View style={[styles.dropdownBox, open2 ? { zIndex: 10 } : { zIndex: 5 }]}>
+            <View style={[styles.dropdownBox, styles[open2 ? 'zIndexHigh' : 'zIndexLow']]}>
               <DropDownPicker
                 open={open2}
                 value={value2}
@@ -397,38 +225,88 @@ export default function NexusScreen({ navigation }) {
             </View>
           )}
         </View>
-  
+
         {/* Card Stack Layer */}
         <View style={styles.swiperLayer}>
           <View style={styles.cardsContainer}>
             {filteredCards.length > 0 ? (
-              filteredCards.map((item, index) => (
-                <AppSwitcherCard 
-                  key={`${item.id}-${index}-${lastTransition}`}
-                  item={item}
-                  index={index}
-                  removeCard={handleRemoveCard}
-                  onCardPress={handleCardPress}
-                  onSwipe={handleSwipeEvent}
-                  isActive={index === 0}
-                  totalCards={filteredCards.length}
-                  swiping={swiping}
-                  lastTransition={lastTransition}
-                />
-              ))
+              filteredCards.map((card, index) => {
+                // Calculate random rotation for each card if needed
+                const randomRotate = Math.random() * 10 - 5; // Random degree between -5 and 5
+                return (
+                  <CardRotate
+                    key={`${card.id}-${index}`}
+                    item={card}
+                    onSendToBack={sendToBack}
+                    sensitivity={SCREEN_WIDTH * 0.25}
+                    isActive={index === 0}
+                    cardDimensions={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
+                  >
+                    <Animated.View
+                      style={[
+                        styles.card,
+                        {
+                          transform: [
+                            { rotateZ: `${(filteredCards.length - index - 1) * 4 + randomRotate}deg` },
+                            { scale: 1 + index * 0.06 - filteredCards.length * 0.06 },
+                          ],
+                        },
+                      ]}
+                    >
+                      <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => handleCardPress(card.id)}
+                        style={styles.cardTouchable}
+                        disabled={swiping}
+                      >
+                        <View style={styles.appHeaderContainer}>
+                          <View style={styles.appIconContainer}>
+                            <Text style={styles.appIcon}>{card.id}</Text>
+                          </View>
+                          <Text style={styles.appName}>{card.title}</Text>
+                          {index === 0 && (
+                            <TouchableOpacity
+                              style={styles.closeButton}
+                              onPress={() => handleRemoveCard(card.id)}
+                              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                              disabled={swiping}
+                            >
+                              <Text style={styles.closeButtonText}>✕</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        <Image
+                          source={{ uri: card.img }}
+                          style={styles.cardImage}
+                          resizeMode="cover"
+                        />
+                        <View style={styles.connectButtonContainer}>
+                          <TouchableOpacity
+                            style={styles.connectButton}
+                            onPress={() => console.log('Connect with', card.title)}
+                            disabled={swiping}
+                          >
+                            <Text style={styles.connectButtonText}>Connect</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
+                    </Animated.View>
+                  </CardRotate>
+                );
+              })
             ) : (
               <View style={styles.noCardsMessage}>
                 <Text style={styles.noCardsText}>No cards match the selected filters</Text>
               </View>
             )}
           </View>
-          
           {renderHomeIndicator()}
         </View>
       </View>
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -462,6 +340,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     perspective: 1000, // Add perspective for 3D effect
   },
+  cardRotate: {
+    position: 'absolute',
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   scrollArea: {
     position: 'absolute',
     bottom: 50,
@@ -489,7 +374,6 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   card: {
-    position: 'absolute',
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
     borderRadius: 20,
@@ -501,7 +385,14 @@ const styles = StyleSheet.create({
     elevation: 6,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'white',
     backfaceVisibility: 'hidden',
+  },
+  cardImage: {
+    width: '100%',
+    height: 250,
+    position: 'absolute',
+    top: 50,
   },
   appHeaderContainer: {
     flexDirection: 'row',
@@ -575,7 +466,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingBottom: 30,
-    marginTop: 210,
+    marginTop: 320,
   },
   connectButton: {
     backgroundColor: '#8A2BE2',
@@ -604,5 +495,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'PlusJakartaSans-Medium',
     color: '#666',
+  },
+  zIndexHigh: {
+    zIndex: 10,
+  },
+  zIndexLow: {
+    zIndex: 5,
   },
 });

@@ -9,21 +9,18 @@ export const COLORS = {
     white: '#FFFFFF',
     black: '#000000',
     border: '#CCCCCC',
-    
     // Status colors
     success: '#4CAF50',
     error: '#F44336',
     warning: '#FFC107',
     info: '#2196F3',
   };
-  
   export const SIZES = {
     // Global measurements
     padding: 16,
     margin: 8,
     radius: 8,
     icon: 24,
-    
     // Text sizes
     h1: 24,
     h2: 20,
@@ -31,14 +28,12 @@ export const COLORS = {
     body: 14,
     caption: 12,
   };
-  
   export const FONTS = {
     // Font families
     regular: 'PlusJakartaSans-Medium',
     bold: 'PlusJakartaSans-Bold',
     italic: 'PlusJakartaSans-MediumItalic',
   };
-  
   export const STYLES = {
     // Common style presets
     shadow: {
@@ -57,7 +52,6 @@ export const COLORS = {
       paddingHorizontal: SIZES.padding,
     },
   };
-  
   // Default export for easy importing
   export default {
     COLORS,

@@ -22,7 +22,6 @@ export default function LoginScreen({ navigation }) {
     <View style={styles.container}>
       {/* Title at the Top */}
       <Text style={styles.title}>Start the YAGYA!</Text>
-      
       {/* Logo Image */}
       <Image
         source={require('../../assets/icons/yagya.png')} // Correct path to logo
